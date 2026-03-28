@@ -7,14 +7,15 @@ const bcrypt = require("bcryptjs");
 const SALT_ROUNDS = 12;
 
 const pool = mysql.createPool({
-  host:             process.env.DB_HOST || "localhost",
-  user:             process.env.DB_USER || "root",
-  password:         process.env.DB_PASS || "zqaTUrpKdxxngCMMYjThfPRuTIDGAUTC", // FotSwCvGOzVoncQaCHLHJmXyTSXmZDJi
-  database:         process.env.DB_NAME || "exam_seating1",
-  port:             process.env.DB_PORT || 59564,
+  host:             process.env.DB_HOST     || "localhost",
+  user:             process.env.DB_USER     || "root",
+  password:         process.env.DB_PASSWORD || "joel",
+  database:         process.env.DB_NAME     || "exam_seating1",
+  port:             parseInt(process.env.DB_PORT) || 3306,
   waitForConnections: true,
   connectionLimit:  10,
   queueLimit:       0,
+  ssl: process.env.DB_SSL === "false" ? false : { rejectUnauthorized: false },
 });
 
 pool.getConnection()
@@ -58,8 +59,9 @@ pool.getConnection()
     conn.release();
   })
   .catch(err => {
-    console.error("❌ MySQL error:", err.message);
-    process.exit(1);
+    console.error("❌ MySQL connection failed:", err.message);
+    console.error("⚠️  Check DB_HOST, DB_USER, DB_PASSWORD, DB_NAME, DB_PORT env vars.");
+    // Do NOT call process.exit(1) — let the server stay up so Render doesn't crash-loop.
   });
 
 // ============================================
@@ -386,6 +388,10 @@ const deleteSessionsByUsername = async (username) => {
   await pool.execute("DELETE FROM sessions WHERE username = ?", [username]);
 };
 
+const deleteExpiredSessions = async () => {
+  await pool.execute(`DELETE FROM sessions WHERE created_at < DATE_SUB(NOW(), INTERVAL 24 HOUR)`);
+};
+
 module.exports = {
   pool, bcrypt,
   upsertHall, getAllHalls, getHallById, deleteHall, getTotalCapacity,
@@ -396,5 +402,5 @@ module.exports = {
   getSubjectPerHall, getHallSummary,
   insertAllocationLog, getLatestLog, getAllLogs,
   getAllUsers, getUserByUsername, createUser, deleteUser, updateUserPassword,
-  createSession, getSession, deleteSession, deleteSessionsByUsername,
+  createSession, getSession, deleteSession, deleteSessionsByUsername, deleteExpiredSessions,
 };
