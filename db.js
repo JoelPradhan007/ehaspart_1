@@ -11,7 +11,7 @@ const pool = mysql.createPool({
   user:             process.env.DB_USER || "root",
   password:         process.env.DB_PASS || "zqaTUrpKdxxngCMMYjThfPRuTIDGAUTC", // FotSwCvGOzVoncQaCHLHJmXyTSXmZDJi
   database:         process.env.DB_NAME || "exam_seating1",
-  port:             process.env.DB_PORT || 3306,
+  port:             process.env.DB_PORT || 59564,
   waitForConnections: true,
   connectionLimit:  10,
   queueLimit:       0,
