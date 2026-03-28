@@ -1,0 +1,932 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>ExamAlloc — Login</title>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Space+Mono:wght@400;700&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet"/>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg:       #0a0b14;
+    --surface:  #10121e;
+    --card:     #141726;
+    --border:   #1e2236;
+    --border2:  #252a42;
+    --red:      #e8341c;
+    --red-glow: rgba(232,52,28,0.35);
+    --red-soft: rgba(232,52,28,0.12);
+    --text:     #f0f2ff;
+    --muted:    #5a6080;
+    --muted2:   #7a82a8;
+    --mono:     'Space Mono', monospace;
+    --bebas:    'Bebas Neue', cursive;
+    --sans:     'DM Sans', sans-serif;
+
+    /* Per-role accent — swapped via JS on role select */
+    --role-accent: #e8341c;
+    --role-glow:   rgba(232,52,28,0.35);
+    --role-soft:   rgba(232,52,28,0.12);
+
+    /* Admin: red-orange */
+    --c-admin:  #e8341c; --cg-admin: rgba(232,52,28,0.35); --cs-admin: rgba(232,52,28,0.12);
+  }
+
+  html, body {
+    min-height: 100%;
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--sans);
+    overflow-y: auto;
+  }
+
+  /* ── GRID BACKGROUND ── */
+  .bg-grid {
+    position: fixed; inset: 0; z-index: 0;
+    background-image:
+      linear-gradient(rgba(255,255,255,0.028) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(255,255,255,0.028) 1px, transparent 1px);
+    background-size: 48px 48px;
+    pointer-events: none;
+  }
+  .bg-glow {
+    position: fixed; inset: 0; z-index: 0; pointer-events: none;
+    background:
+      radial-gradient(ellipse 60% 50% at 50% 0%, rgba(232,52,28,0.06) 0%, transparent 70%),
+      radial-gradient(ellipse 40% 40% at 20% 80%, rgba(37,99,235,0.05) 0%, transparent 60%);
+  }
+
+  /* ── WRAPPER ── */
+  .page {
+    position: relative; z-index: 1;
+    min-height: 100vh;
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    padding: 2rem 1rem;
+  }
+
+  /* ── BACK LINK ── FIX: z-index raised above .page ── */
+  .back-link {
+    position: fixed; top: 24px; left: 28px;
+    z-index: 100; /* FIXED: was missing/0, now above everything */
+    display: flex; align-items: center; gap: 8px;
+    text-decoration: none;
+    color: var(--text);
+    font-family: var(--mono);
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    background: var(--surface);
+    border: 1px solid var(--border2);
+    border-radius: 8px;
+    padding: 10px 16px;
+    transition: all 0.2s;
+  }
+  .back-link:hover {
+    color: var(--text);
+    border-color: var(--role-accent);
+    background: var(--role-soft);
+    box-shadow: 0 0 12px var(--role-glow);
+  }
+  .back-link svg { width: 14px; height: 14px; flex-shrink: 0; }
+
+  /* ── LOGO ── */
+  .logo-block {
+    text-align: center; margin-bottom: 2rem;
+    animation: fadeUp 0.5s ease both;
+  }
+  .logo-title {
+    font-family: var(--bebas);
+    font-size: clamp(52px, 10vw, 80px);
+    letter-spacing: 6px;
+    color: var(--text);
+    line-height: 1;
+    text-shadow: 0 0 60px rgba(255,255,255,0.06);
+  }
+  .logo-sub {
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 0.28em;
+    color: var(--muted);
+    text-transform: uppercase;
+    margin-top: 6px;
+  }
+
+  /* ── ROLE LABEL ── */
+  .role-label {
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 0.22em;
+    color: var(--muted);
+    text-transform: uppercase;
+    text-align: center;
+    margin-bottom: 14px;
+    animation: fadeUp 0.5s ease 0.05s both;
+  }
+
+  /* ── ROLE CARDS ── */
+  .role-cards {
+    display: flex; gap: 12px;
+    margin-bottom: 24px;
+    animation: fadeUp 0.5s ease 0.1s both;
+  }
+  .role-card {
+    flex: 1; min-width: 120px; max-width: 150px;
+    background: var(--card);
+    border: 1.5px solid var(--border2);
+    border-radius: 12px;
+    padding: 18px 12px 14px;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.2s;
+    position: relative;
+    overflow: hidden;
+  }
+  .role-card::before {
+    content: '';
+    position: absolute; inset: 0;
+    background: var(--role-soft);
+    opacity: 0;
+    transition: opacity 0.2s;
+    border-radius: 10px;
+  }
+  .role-card:hover { border-color: var(--border2); transform: translateY(-2px); }
+  .role-card:hover::before { opacity: 0.5; }
+  .role-card.active {
+    border-color: var(--role-accent);
+    box-shadow: 0 0 0 1px var(--role-accent), 0 4px 24px var(--role-glow);
+  }
+  .role-card.active::before { opacity: 1; }
+  .role-icon {
+    font-size: 26px; margin-bottom: 8px;
+    display: block;
+    filter: grayscale(0.3);
+    transition: filter 0.2s, transform 0.2s;
+  }
+  .role-card.active .role-icon { filter: none; transform: scale(1.1); }
+  .role-card.active .role-name { color: var(--role-accent); }
+  .role-name {
+    font-family: var(--sans);
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--text);
+    margin-bottom: 4px;
+    transition: color 0.2s;
+  }
+  .role-desc {
+    font-size: 10px;
+    color: var(--muted2);
+    line-height: 1.4;
+  }
+
+  /* ── LOGIN CARD ── */
+  .login-card {
+    width: 100%; max-width: 460px;
+    background: rgba(16,18,30,0.85);
+    border: 1px solid var(--border2);
+    border-radius: 16px;
+    padding: 28px 32px 24px;
+    backdrop-filter: blur(20px);
+    animation: fadeUp 0.5s ease 0.15s both;
+  }
+
+  /* ── FORM ── */
+  .field { margin-bottom: 18px; }
+  .field-label {
+    display: block;
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 0.18em;
+    color: var(--muted);
+    text-transform: uppercase;
+    margin-bottom: 8px;
+  }
+  .field-input {
+    width: 100%;
+    background: var(--surface);
+    border: 1.5px solid var(--border2);
+    border-radius: 8px;
+    padding: 13px 16px;
+    font-family: var(--sans);
+    font-size: 14px;
+    color: var(--text);
+    outline: none;
+    transition: border-color 0.2s, box-shadow 0.2s;
+  }
+  .field-input::placeholder { color: var(--muted); }
+  .field-input:focus {
+    border-color: var(--role-accent);
+    box-shadow: 0 0 0 3px var(--role-soft);
+  }
+
+  .password-wrap { position: relative; }
+  .toggle-pw {
+    position: absolute; right: 14px; top: 50%;
+    transform: translateY(-50%);
+    background: none; border: none; cursor: pointer;
+    color: var(--muted); padding: 4px;
+    transition: color 0.2s;
+  }
+  .toggle-pw:hover { color: var(--text); }
+  .toggle-pw svg { width: 16px; height: 16px; display: block; }
+
+  /* ── SUBMIT BUTTON ── */
+  .btn-signin {
+    width: 100%;
+    background: var(--role-accent);
+    color: #fff;
+    border: none;
+    border-radius: 10px;
+    padding: 15px;
+    font-family: var(--sans);
+    font-size: 15px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.2s, background 0.3s, box-shadow 0.3s;
+    letter-spacing: 0.02em;
+    margin-top: 4px;
+    box-shadow: 0 4px 20px var(--role-glow);
+    position: relative;
+    overflow: hidden;
+  }
+  .btn-signin::after {
+    content: '';
+    position: absolute; inset: 0;
+    background: rgba(255,255,255,0.1);
+    opacity: 0;
+    transition: opacity 0.15s;
+  }
+  .btn-signin:hover { transform: translateY(-1px); box-shadow: 0 6px 28px var(--role-glow); }
+  .btn-signin:hover::after { opacity: 1; }
+  .btn-signin:active { transform: translateY(0); }
+  .btn-signin:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+
+  /* ── ERROR ── */
+  .error-msg {
+    background: rgba(232,52,28,0.1);
+    border: 1px solid rgba(232,52,28,0.3);
+    border-radius: 8px;
+    padding: 10px 14px;
+    font-size: 12px;
+    color: #ff7b6b;
+    margin-bottom: 16px;
+    display: none;
+    font-family: var(--mono);
+  }
+  .error-msg.show { display: block; }
+
+  /* ── ANIMATIONS ── */
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(16px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+  @keyframes shake {
+    0%,100% { transform: translateX(0); }
+    20%     { transform: translateX(-8px); }
+    40%     { transform: translateX(8px); }
+    60%     { transform: translateX(-5px); }
+    80%     { transform: translateX(5px); }
+  }
+
+  /* ── LOADING SPINNER ── */
+  .spinner {
+    display: inline-block; width: 16px; height: 16px;
+    border: 2px solid rgba(255,255,255,0.3);
+    border-top-color: #fff;
+    border-radius: 50%;
+    animation: spin 0.7s linear infinite;
+    vertical-align: middle; margin-right: 8px;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* ── CORNER DECORATIONS ── */
+  .corner {
+    position: fixed;
+    width: 60px; height: 60px;
+    pointer-events: none; z-index: 0; /* pointer-events:none so they never block clicks */
+  }
+  .corner-tl { top: 20px; left: 20px; border-top: 1px solid var(--border2); border-left: 1px solid var(--border2); }
+  .corner-tr { top: 20px; right: 20px; border-top: 1px solid var(--border2); border-right: 1px solid var(--border2); }
+  .corner-bl { bottom: 20px; left: 20px; border-bottom: 1px solid var(--border2); border-left: 1px solid var(--border2); }
+  .corner-br { bottom: 20px; right: 20px; border-bottom: 1px solid var(--border2); border-right: 1px solid var(--border2); }
+
+  /* ── REGISTER BUTTON (admin only) ── */
+  .btn-register {
+    width: 100%;
+    background: transparent;
+    color: var(--role-accent);
+    border: 1.5px solid var(--role-accent);
+    border-radius: 10px;
+    padding: 13px;
+    font-family: var(--sans);
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.25s;
+    letter-spacing: 0.04em;
+    margin-top: 10px;
+    display: none; /* hidden unless admin selected */
+    box-shadow: 0 0 0 transparent;
+  }
+  .btn-register:hover {
+    background: var(--role-soft);
+    box-shadow: 0 0 16px var(--role-glow);
+    transform: translateY(-1px);
+  }
+  .btn-register.visible { display: block; }
+  .forgot-row {
+    display: none;
+    justify-content: flex-end;
+    margin-top: -10px;
+    margin-bottom: 16px;
+  }
+  .forgot-row.visible { display: flex; }
+  .btn-forgot {
+    background: none;
+    border: none;
+    color: var(--muted2);
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 0.1em;
+    cursor: pointer;
+    padding: 4px 0;
+    transition: color 0.2s;
+  }
+  .btn-forgot:hover { color: var(--role-accent); }
+
+  /* ── REGISTER MODAL ── */
+  .reg-overlay {
+    position: fixed; inset: 0; z-index: 300;
+    background: rgba(0,0,0,0.75);
+    backdrop-filter: blur(8px);
+    display: flex; align-items: center; justify-content: center;
+    padding: 1rem;
+    opacity: 0; pointer-events: none;
+    transition: opacity 0.25s;
+  }
+  .reg-overlay.open { opacity: 1; pointer-events: all; }
+
+  .reg-modal {
+    width: 100%; max-width: 430px;
+    background: #141726;
+    border: 1px solid #252a42;
+    border-radius: 18px;
+    padding: 32px 32px 28px;
+    position: relative;
+    transform: translateY(24px) scale(0.97);
+    transition: transform 0.25s cubic-bezier(0.34,1.56,0.64,1);
+    box-shadow: 0 24px 80px rgba(0,0,0,0.6), 0 0 0 1px rgba(255,255,255,0.04);
+  }
+  .reg-overlay.open .reg-modal { transform: translateY(0) scale(1); }
+
+  .reg-close {
+    position: absolute; top: 16px; right: 18px;
+    background: rgba(255,255,255,0.06); border: none; cursor: pointer;
+    color: #7a82a8; width: 28px; height: 28px;
+    border-radius: 50%; font-size: 16px; line-height: 28px; text-align: center;
+    transition: all 0.15s; display: flex; align-items: center; justify-content: center;
+  }
+  .reg-close:hover { background: rgba(232,52,28,0.15); color: #e8341c; }
+
+  .reg-title {
+    font-family: 'Bebas Neue', cursive;
+    font-size: 38px; letter-spacing: 5px;
+    color: #f0f2ff; line-height: 1; margin-bottom: 6px;
+  }
+  .reg-sub {
+    font-family: 'Space Mono', monospace;
+    font-size: 9px; letter-spacing: 0.22em;
+    color: #5a6080; text-transform: uppercase;
+    margin-bottom: 26px;
+  }
+
+  .reg-field { margin-bottom: 18px; }
+  .reg-label {
+    display: block;
+    font-family: 'Space Mono', monospace;
+    font-size: 9px; letter-spacing: 0.2em;
+    color: #5a6080; text-transform: uppercase;
+    margin-bottom: 8px;
+  }
+  .reg-input {
+    width: 100%;
+    background: #10121e;
+    border: 1.5px solid #1e2236;
+    border-radius: 10px;
+    padding: 14px 46px 14px 16px;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 14px; color: #f0f2ff;
+    outline: none;
+    transition: border-color 0.2s, box-shadow 0.2s;
+  }
+  .reg-input::placeholder { color: #3a4060; }
+  .reg-input:focus {
+    border-color: #e8341c;
+    box-shadow: 0 0 0 3px rgba(232,52,28,0.12);
+  }
+  .reg-pw-wrap { position: relative; }
+  .reg-eye {
+    position: absolute; right: 14px; top: 50%;
+    transform: translateY(-50%);
+    background: none; border: none; cursor: pointer;
+    color: #5a6080; padding: 4px; transition: color 0.2s;
+    display: flex; align-items: center;
+  }
+  .reg-eye:hover { color: #f0f2ff; }
+  .reg-eye svg { width: 16px; height: 16px; display: block; }
+
+  .reg-error {
+    background: rgba(232,52,28,0.1);
+    border: 1px solid rgba(232,52,28,0.3);
+    border-radius: 8px; padding: 10px 14px;
+    font-size: 11px; color: #ff7b6b;
+    margin-bottom: 14px; display: none;
+    font-family: 'Space Mono', monospace;
+    letter-spacing: 0.03em;
+  }
+  .reg-error.show { display: block; }
+
+  .btn-reg-submit {
+    width: 100%;
+    background: #e8341c;
+    color: #fff; border: none;
+    border-radius: 10px; padding: 16px;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 15px; font-weight: 700;
+    cursor: pointer; margin-top: 6px;
+    transition: all 0.2s;
+    box-shadow: 0 4px 24px rgba(232,52,28,0.4);
+    letter-spacing: 0.02em;
+  }
+  .btn-reg-submit:hover { transform: translateY(-1px); box-shadow: 0 8px 30px rgba(232,52,28,0.5); }
+  .btn-reg-submit:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+
+  .reg-success-wrap {
+    text-align: center; padding: 16px 0 8px;
+    display: none;
+  }
+  .reg-success-icon { font-size: 46px; display: block; margin-bottom: 14px; animation: popIn 0.4s cubic-bezier(0.175,0.885,0.32,1.275) both; }
+  .reg-success-title { font-family: 'Bebas Neue', cursive; font-size: 28px; letter-spacing: 4px; color: #4ade80; margin-bottom: 6px; }
+  .reg-success-msg   { font-size: 12px; color: #7a82a8; margin-bottom: 20px; }
+  @keyframes popIn { from { transform: scale(0); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+</style>
+</head>
+<body>
+
+<div class="bg-grid"></div>
+<div class="bg-glow"></div>
+
+<!-- Corner decorations -->
+<div class="corner corner-tl"></div>
+<div class="corner corner-tr"></div>
+<div class="corner corner-bl"></div>
+<div class="corner corner-br"></div>
+
+<!-- BACK LINK — placed AFTER .page in DOM so it naturally stacks above, plus z-index:100 -->
+<a href="index.html" class="back-link">
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <polyline points="15 18 9 12 15 6"/>
+  </svg>
+  BACK TO HOME
+</a>
+
+<div class="page">
+  <!-- Logo -->
+  <div class="logo-block">
+    <div class="logo-title">Exam Alloc</div>
+    <div class="logo-sub">Examination Hall Allocation System</div>
+  </div>
+
+  <!-- Role selector -->
+  <div class="role-label">Select Role</div>
+  <div class="role-cards">
+    <div class="role-card active" data-role="administrator" onclick="selectRole(this)">
+      <span class="role-icon">🔑</span>
+      <div class="role-name">Administrator</div>
+      <div class="role-desc">Full system access</div>
+    </div>
+
+  </div>
+
+  <!-- Login form -->
+  <div class="login-card">
+    <div class="error-msg" id="errorMsg">Invalid credentials. Please try again.</div>
+
+    <div class="field">
+      <label class="field-label">Username</label>
+      <input class="field-input" type="text" id="username" placeholder="admin" autocomplete="username"/>
+    </div>
+
+    <div class="field">
+      <label class="field-label">Password</label>
+      <div class="password-wrap">
+        <input class="field-input" type="password" id="password" placeholder="••••••••" autocomplete="current-password"/>
+        <button class="toggle-pw" onclick="togglePw()" type="button" id="pwToggleBtn">
+          <svg id="eyeIcon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+            <circle cx="12" cy="12" r="3"/>
+          </svg>
+        </button>
+      </div>
+    </div>
+
+    <div class="forgot-row">
+      <button class="btn-forgot" id="forgotBtn" onclick="openForgot()">
+        Forgot password?
+      </button>
+    </div>
+
+    <button class="btn-signin" id="signinBtn" onclick="handleLogin()">
+      Sign in as Administrator
+    </button>
+
+    <button class="btn-register" id="registerBtn" onclick="openRegister()">
+      Register New Account
+    </button>
+
+  </div>
+</div>
+
+<script>
+  const REDIRECTS = {
+    administrator: 'admin_dashboard.html',
+  };
+
+  const LABELS = {
+    administrator: 'Administrator',
+  };
+
+  let currentRole = 'administrator';
+  document.addEventListener('DOMContentLoaded', () => updateRegisterBtn(currentRole));
+
+  const ROLE_COLORS = {
+    administrator: { accent: '#e8341c', glow: 'rgba(232,52,28,0.35)',  soft: 'rgba(232,52,28,0.12)'  },
+  };
+
+  function applyRoleColor(role) {
+    const c   = ROLE_COLORS[role];
+    const root = document.documentElement;
+    root.style.setProperty('--role-accent', c.accent);
+    root.style.setProperty('--role-glow',   c.glow);
+    root.style.setProperty('--role-soft',   c.soft);
+  }
+
+  function selectRole(card) {
+    document.querySelectorAll('.role-card').forEach(c => c.classList.remove('active'));
+    card.classList.add('active');
+    currentRole = card.dataset.role;
+    applyRoleColor(currentRole);
+    document.getElementById('signinBtn').textContent = `Sign in as ${LABELS[currentRole]}`;
+    document.getElementById('username').placeholder = currentRole === 'administrator' ? 'admin' : currentRole;
+    document.getElementById('errorMsg').classList.remove('show');
+    updateRegisterBtn(currentRole);
+  }
+
+  function togglePw() {
+    const pw   = document.getElementById('password');
+    const icon = document.getElementById('eyeIcon');
+    if (pw.type === 'password') {
+      pw.type = 'text';
+      icon.innerHTML = `<path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/>`;
+    } else {
+      pw.type = 'password';
+      icon.innerHTML = `<path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/>`;
+    }
+  }
+
+  // FIX #3: Admin login now verified server-side via admin.config.json (not hardcoded).
+  // FIX token: server returns an auth token stored in sessionStorage for all API calls.
+  async function handleLogin() {
+    const username = document.getElementById('username').value.trim();
+    const password = document.getElementById('password').value;
+    const btn = document.getElementById('signinBtn');
+    const err = document.getElementById('errorMsg');
+
+    if (!username || !password) {
+      err.textContent = 'Please enter username and password.';
+      err.classList.add('show');
+      return;
+    }
+
+    err.classList.remove('show');
+    btn.disabled = true;
+    btn.innerHTML = `<span class="spinner"></span>Authenticating...`;
+
+    try {
+      const res  = await fetch('/api/login', {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body:    JSON.stringify({ username, password, role: currentRole }),
+      });
+      const json = await res.json();
+
+      if (json.success) {
+        sessionStorage.setItem('ehas_role',       json.role);
+        sessionStorage.setItem('ehas_user',       json.username);
+        sessionStorage.setItem('ehas_token',      json.token);
+        sessionStorage.setItem('ehas_login_time', Date.now().toString());
+        window.location.href = REDIRECTS[currentRole];
+      } else {
+        showError(json.message);
+      }
+    } catch (e) {
+      showError('Cannot reach server. Is it running?');
+    }
+  }
+
+  function showError(msg) {
+    const btn = document.getElementById('signinBtn');
+    const err = document.getElementById('errorMsg');
+    btn.disabled = false;
+    btn.textContent = `Sign in as ${LABELS[currentRole]}`;
+    err.textContent = msg || 'Invalid credentials. Please try again.';
+    err.classList.add('show');
+    const card = document.querySelector('.login-card');
+    card.style.animation = 'none';
+    card.offsetHeight;
+    card.style.animation = 'shake 0.4s ease';
+  }
+
+
+  // ── REGISTER MODAL JS ──────────────────────────────────────────
+  function openRegister() {
+    resetRegModal();
+    document.getElementById('regOverlay').classList.add('open');
+    setTimeout(() => document.getElementById('regUser').focus(), 250);
+  }
+  function closeRegister() {
+    document.getElementById('regOverlay').classList.remove('open');
+    setTimeout(resetRegModal, 300);
+  }
+  function resetRegModal() {
+    document.getElementById('regUser').value      = '';
+    document.getElementById('regPw').value        = '';
+    document.getElementById('regConfirm').value   = '';
+    document.getElementById('regErr').classList.remove('show');
+    document.getElementById('regFormWrap').style.display   = '';
+    document.getElementById('regSuccessWrap').style.display = 'none';
+    document.getElementById('regSubmit').disabled    = false;
+    document.getElementById('regSubmit').textContent = 'Register';
+  }
+  function regToggle(id, btn) {
+    const el = document.getElementById(id);
+    const sv = btn.querySelector('svg');
+    if (el.type === 'password') {
+      el.type = 'text';
+      sv.innerHTML = `<path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/>`;
+    } else {
+      el.type = 'password';
+      sv.innerHTML = `<path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/>`;
+    }
+  }
+  async function submitRegister() {
+    const username = document.getElementById('regUser').value.trim();
+    const password = document.getElementById('regPw').value;
+    const confirm  = document.getElementById('regConfirm').value;
+    const errEl    = document.getElementById('regErr');
+    const btn      = document.getElementById('regSubmit');
+
+    errEl.classList.remove('show');
+    if (!username) { errEl.textContent = 'Username is required.'; errEl.classList.add('show'); return; }
+    if (username.length < 3) { errEl.textContent = 'Username must be at least 3 characters.'; errEl.classList.add('show'); return; }
+    if (!password) { errEl.textContent = 'Password is required.'; errEl.classList.add('show'); return; }
+    if (password.length < 6) { errEl.textContent = 'Password must be at least 6 characters.'; errEl.classList.add('show'); return; }
+    if (password !== confirm) { errEl.textContent = 'Passwords do not match.'; errEl.classList.add('show'); return; }
+
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner"></span>Creating...';
+
+    try {
+      // Register new admin account — open endpoint, no auth token needed
+      const res  = await fetch('/api/users', {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body:    JSON.stringify({ username, password, role: 'administrator' }),
+      });
+      const json = await res.json();
+      if (json.success) {
+        document.getElementById('regFormWrap').style.display    = 'none';
+        document.getElementById('regSuccessWrap').style.display = 'block';
+        document.getElementById('regSuccessMsg').textContent    = `"${username}" registered successfully.`;
+      } else {
+        errEl.textContent = json.message || 'Registration failed.';
+        errEl.classList.add('show');
+        btn.disabled = false; btn.textContent = 'Register';
+      }
+    } catch (e) {
+      errEl.textContent = 'Cannot reach server. Is it running?';
+      errEl.classList.add('show');
+      btn.disabled = false; btn.textContent = 'Register';
+    }
+  }
+
+  // Show/hide register button based on role
+  function updateRegisterBtn(role) {
+    const isAdmin = role === 'administrator';
+    document.getElementById('registerBtn').classList.toggle('visible', isAdmin);
+    document.querySelector('.forgot-row').classList.toggle('visible', isAdmin);
+  }
+
+
+
+
+  // ── FORGOT PASSWORD JS ─────────────────────────────────────────
+  function openForgot() {
+    resetForgotModal();
+    document.getElementById('forgotOverlay').classList.add('open');
+    setTimeout(() => document.getElementById('forgotUser').focus(), 250);
+  }
+  function closeForgot() {
+    document.getElementById('forgotOverlay').classList.remove('open');
+    setTimeout(resetForgotModal, 300);
+  }
+  function resetForgotModal() {
+    document.getElementById('forgotUser').value    = '';
+    document.getElementById('forgotPw').value      = '';
+    document.getElementById('forgotConfirm').value = '';
+    document.getElementById('forgotErr').classList.remove('show');
+    document.getElementById('forgotFormWrap').style.display    = '';
+    document.getElementById('forgotSuccessWrap').style.display = 'none';
+    document.getElementById('forgotSubmit').disabled    = false;
+    document.getElementById('forgotSubmit').textContent = 'Reset Password';
+  }
+  async function submitForgot() {
+    const username = document.getElementById('forgotUser').value.trim();
+    const password = document.getElementById('forgotPw').value;
+    const confirm  = document.getElementById('forgotConfirm').value;
+    const errEl    = document.getElementById('forgotErr');
+    const btn      = document.getElementById('forgotSubmit');
+
+    errEl.classList.remove('show');
+    if (!username) { errEl.textContent = 'Username is required.'; errEl.classList.add('show'); return; }
+    if (!password) { errEl.textContent = 'New password is required.'; errEl.classList.add('show'); return; }
+    if (password.length < 6) { errEl.textContent = 'Password must be at least 6 characters.'; errEl.classList.add('show'); return; }
+    if (password !== confirm) { errEl.textContent = 'Passwords do not match.'; errEl.classList.add('show'); return; }
+
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner"></span>Resetting...';
+
+    try {
+      // Use reset-admin-password for 'admin', reset-password for registered users
+      // Both endpoints are open (no auth required) since user is not logged in here
+      const endpoint = username.toLowerCase() === 'admin'
+        ? '/api/reset-admin-password'
+        : '/api/reset-password';
+
+      const res = await fetch(endpoint, {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body:    JSON.stringify({ username, newPassword: password }),
+      });
+      const json = await res.json();
+      if (json.success) {
+        document.getElementById('forgotFormWrap').style.display    = 'none';
+        document.getElementById('forgotSuccessWrap').style.display = 'block';
+        document.getElementById('forgotSuccessMsg').textContent    = `Password for "${username}" has been reset.`;
+      } else {
+        errEl.textContent = json.message || 'Reset failed.';
+        errEl.classList.add('show');
+        btn.disabled = false; btn.textContent = 'Reset Password';
+      }
+    } catch (e) {
+      errEl.textContent = 'Cannot reach server. Is it running?';
+      errEl.classList.add('show');
+      btn.disabled = false; btn.textContent = 'Reset Password';
+    }
+  }
+
+
+
+  // ── Unified keyboard handler ──────────────────────────────────
+  document.addEventListener('keydown', e => {
+    const regOpen    = document.getElementById('regOverlay').classList.contains('open');
+    const forgotOpen = document.getElementById('forgotOverlay').classList.contains('open');
+
+    if (e.key === 'Escape') {
+      if (regOpen)    closeRegister();
+      if (forgotOpen) closeForgot();
+    }
+
+    if (e.key === 'Enter') {
+      if (regOpen)         submitRegister();
+      else if (forgotOpen) submitForgot();
+      else                 handleLogin();
+    }
+  });
+
+</script>
+<!-- ══════════════════════════════════════
+     REGISTER MODAL — Admin only
+══════════════════════════════════════ -->
+<div class="reg-overlay" id="regOverlay">
+  <div class="reg-modal">
+    <button class="reg-close" onclick="closeRegister()">
+      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+    </button>
+
+    <div id="regFormWrap">
+      <div class="reg-title">Register</div>
+      <div class="reg-sub">Create New Administrator Account</div>
+
+      <div class="reg-error" id="regErr"></div>
+
+      <div class="reg-field">
+        <label class="reg-label">Username</label>
+        <input class="reg-input" type="text" id="regUser" placeholder="Enter username" autocomplete="off"/>
+      </div>
+
+      <div class="reg-field">
+        <label class="reg-label">Create Password</label>
+        <div class="reg-pw-wrap">
+          <input class="reg-input" type="password" id="regPw" placeholder="••••••••" autocomplete="new-password"/>
+          <button class="reg-eye" type="button" onclick="regToggle('regPw',this)">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/>
+            </svg>
+          </button>
+        </div>
+      </div>
+
+      <div class="reg-field">
+        <label class="reg-label">Confirm Password</label>
+        <div class="reg-pw-wrap">
+          <input class="reg-input" type="password" id="regConfirm" placeholder="••••••••" autocomplete="new-password"/>
+          <button class="reg-eye" type="button" onclick="regToggle('regConfirm',this)">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/>
+            </svg>
+          </button>
+        </div>
+      </div>
+
+      <button class="btn-reg-submit" id="regSubmit" onclick="submitRegister()">Register</button>
+    </div>
+
+    <div class="reg-success-wrap" id="regSuccessWrap">
+      <span class="reg-success-icon">✅</span>
+      <div class="reg-success-title">Account Created!</div>
+      <div class="reg-success-msg" id="regSuccessMsg">Account registered successfully.</div>
+      <button class="btn-reg-submit" onclick="closeRegister()">Back to Login</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════
+     FORGOT PASSWORD MODAL — Admin only
+══════════════════════════════════════ -->
+<div class="reg-overlay" id="forgotOverlay">
+  <div class="reg-modal">
+    <button class="reg-close" onclick="closeForgot()">
+      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+    </button>
+
+    <div id="forgotFormWrap">
+      <div class="reg-title">Reset</div>
+      <div class="reg-sub">Reset Administrator Password</div>
+
+      <div class="reg-error" id="forgotErr"></div>
+
+      <div class="reg-field">
+        <label class="reg-label">Username</label>
+        <input class="reg-input" type="text" id="forgotUser" placeholder="Enter username" autocomplete="off"/>
+      </div>
+
+      <div class="reg-field">
+        <label class="reg-label">New Password</label>
+        <div class="reg-pw-wrap">
+          <input class="reg-input" type="password" id="forgotPw" placeholder="••••••••" autocomplete="new-password"/>
+          <button class="reg-eye" type="button" onclick="regToggle('forgotPw',this)">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/>
+            </svg>
+          </button>
+        </div>
+      </div>
+
+      <div class="reg-field">
+        <label class="reg-label">Confirm Password</label>
+        <div class="reg-pw-wrap">
+          <input class="reg-input" type="password" id="forgotConfirm" placeholder="••••••••" autocomplete="new-password"/>
+          <button class="reg-eye" type="button" onclick="regToggle('forgotConfirm',this)">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/>
+            </svg>
+          </button>
+        </div>
+      </div>
+
+      <button class="btn-reg-submit" id="forgotSubmit" onclick="submitForgot()">Reset Password</button>
+    </div>
+
+    <div class="reg-success-wrap" id="forgotSuccessWrap">
+      <span class="reg-success-icon">✅</span>
+      <div class="reg-success-title">Password Reset!</div>
+      <div class="reg-success-msg" id="forgotSuccessMsg">Password updated successfully.</div>
+      <button class="btn-reg-submit" onclick="closeForgot()">Back to Login</button>
+    </div>
+  </div>
+</div>
+
+</body>
+</html>

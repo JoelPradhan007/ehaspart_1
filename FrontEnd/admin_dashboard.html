@@ -1,0 +1,1522 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Exam Alloc — Admin Dashboard</title>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Space+Mono:wght@400;700&family=DM+Sans:ital,wght@0,300;0,400;0,500;0,600;0,700&display=swap" rel="stylesheet"/>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+:root{
+  --bg:#080910;--surface:#0d0f1a;--card:#111420;--card2:#151828;
+  --border:#1a1e2e;--border2:#222640;
+  --red:#e8341c;--red-glow:rgba(232,52,28,0.3);--red-soft:rgba(232,52,28,0.1);
+  --teal:#0fb981;--teal-soft:rgba(15,185,129,0.1);
+  --blue:#2563eb;--blue-soft:rgba(37,99,235,0.1);
+  --warn:#f59e0b;--warn-soft:rgba(245,158,11,0.1);
+  --text:#eef0ff;--muted:#555a78;--muted2:#7a82a8;
+  --mono:'Space Mono',monospace;--bebas:'Bebas Neue',cursive;--sans:'DM Sans',sans-serif;
+  --sidebar:220px;--radius:10px;
+}
+html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--sans);font-size:14px;overflow:hidden;}
+::-webkit-scrollbar{width:5px;height:5px;}
+::-webkit-scrollbar-track{background:var(--bg);}
+::-webkit-scrollbar-thumb{background:var(--border2);border-radius:3px;}
+
+/* ── LAYOUT ── */
+.app{display:flex;height:100vh;overflow:hidden;}
+
+/* ── SIDEBAR ── */
+.sidebar{
+  width:var(--sidebar);min-width:var(--sidebar);
+  background:var(--surface);border-right:1px solid var(--border);
+  display:flex;flex-direction:column;z-index:10;overflow:hidden;
+}
+.sidebar-logo{
+  padding:20px 18px 16px;border-bottom:1px solid var(--border);
+  display:flex;align-items:center;gap:10px;
+}
+.logo-icon{
+  width:32px;height:32px;border-radius:8px;background:var(--red);
+  display:flex;align-items:center;justify-content:center;flex-shrink:0;
+  box-shadow:0 0 12px var(--red-glow);
+}
+.logo-icon svg{width:16px;height:16px;color:#fff;}
+.logo-text .t1{font-family:var(--bebas);font-size:16px;letter-spacing:2px;color:var(--text);line-height:1;}
+.logo-text .t2{font-family:var(--mono);font-size:8px;letter-spacing:0.12em;color:var(--muted);text-transform:uppercase;margin-top:2px;}
+
+.nav{flex:1;padding:12px 0;overflow-y:auto;}
+.nav-section{padding:14px 18px 6px;font-family:var(--mono);font-size:9px;letter-spacing:0.18em;color:var(--muted);text-transform:uppercase;}
+.nav-item{
+  display:flex;align-items:center;gap:10px;
+  padding:9px 18px;cursor:pointer;
+  color:var(--muted2);font-size:13px;font-weight:500;
+  border-left:2px solid transparent;
+  transition:all 0.18s;user-select:none;
+}
+.nav-item:hover{color:var(--text);background:rgba(255,255,255,0.025);}
+.nav-item.active{color:var(--red);border-left-color:var(--red);background:var(--red-soft);}
+.nav-item .ni{font-size:15px;width:20px;text-align:center;flex-shrink:0;}
+.nav-badge{
+  margin-left:auto;background:var(--red);color:#fff;
+  font-family:var(--mono);font-size:9px;
+  padding:2px 7px;border-radius:100px;
+}
+
+.sidebar-footer{
+  padding:14px 18px;border-top:1px solid var(--border);
+}
+.user-chip{
+  display:flex;align-items:center;gap:10px;
+  padding:10px 12px;background:var(--card);
+  border:1px solid var(--border2);border-radius:8px;
+  cursor:pointer;transition:border-color 0.2s;
+}
+.user-chip:hover{border-color:var(--border2);}
+.user-avatar{
+  width:30px;height:30px;border-radius:50%;
+  background:linear-gradient(135deg,var(--red),var(--blue));
+  display:flex;align-items:center;justify-content:center;
+  font-family:var(--mono);font-size:11px;font-weight:700;color:#fff;flex-shrink:0;
+}
+.user-info .un{font-size:12px;font-weight:600;color:var(--text);}
+.user-info .ur{font-family:var(--mono);font-size:9px;color:var(--muted);text-transform:uppercase;letter-spacing:0.08em;}
+.logout-btn{
+  margin-left:auto;background:none;border:none;cursor:pointer;
+  color:var(--muted);transition:color 0.2s;padding:2px;
+}
+.logout-btn:hover{color:var(--red);}
+.logout-btn svg{width:14px;height:14px;display:block;}
+
+/* ── MAIN ── */
+.main{flex:1;display:flex;flex-direction:column;overflow:hidden;}
+.topbar{
+  height:54px;background:var(--surface);border-bottom:1px solid var(--border);
+  display:flex;align-items:center;padding:0 24px;gap:12px;flex-shrink:0;
+}
+.topbar-title{font-family:var(--mono);font-size:11px;color:var(--muted);}
+.topbar-title span{color:var(--text);}
+.topbar-right{margin-left:auto;display:flex;align-items:center;gap:10px;}
+.status-pill{
+  display:flex;align-items:center;gap:6px;
+  font-family:var(--mono);font-size:10px;color:var(--teal);
+  background:var(--teal-soft);border:1px solid rgba(15,185,129,0.2);
+  padding:4px 12px;border-radius:100px;
+}
+.status-dot{width:6px;height:6px;border-radius:50%;background:var(--teal);animation:blink 1.4s infinite;}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:0.2}}
+
+.content{flex:1;overflow-y:auto;padding:24px;}
+
+/* ── PAGE SECTIONS ── */
+.page-section{display:none;}
+.page-section.active{display:block;animation:fadeIn 0.25s ease;}
+@keyframes fadeIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+
+/* ── PAGE HEADER ── */
+.page-header{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:24px;gap:12px;flex-wrap:wrap;}
+.page-header-left .ph-tag{font-family:var(--mono);font-size:10px;letter-spacing:0.16em;text-transform:uppercase;color:var(--muted);margin-bottom:4px;}
+.page-header-left h2{font-family:var(--bebas);font-size:32px;letter-spacing:1px;color:var(--text);line-height:1;}
+.page-header-right{display:flex;gap:8px;flex-wrap:wrap;}
+
+/* ── BUTTONS ── */
+.btn{display:inline-flex;align-items:center;gap:6px;padding:8px 16px;border-radius:7px;border:none;cursor:pointer;font-size:13px;font-family:var(--sans);font-weight:600;transition:all 0.18s;}
+.btn svg{width:14px;height:14px;flex-shrink:0;}
+.btn-red{background:var(--red);color:#fff;box-shadow:0 0 16px var(--red-glow);}
+.btn-red:hover{filter:brightness(1.1);transform:translateY(-1px);}
+.btn-ghost{background:var(--card);color:var(--text);border:1px solid var(--border2);}
+.btn-ghost:hover{border-color:var(--muted2);background:var(--card2);}
+.btn-teal{background:var(--teal);color:#fff;}
+.btn-teal:hover{filter:brightness(1.1);transform:translateY(-1px);}
+.btn-warn{background:var(--warn-soft);color:var(--warn);border:1px solid rgba(245,158,11,0.3);}
+.btn-warn:hover{background:rgba(245,158,11,0.18);}
+.btn-teal-soft{background:var(--teal-soft);color:var(--teal);border:1px solid rgba(20,184,166,0.3);}
+.btn-teal-soft:hover{background:rgba(20,184,166,0.18);}
+.btn-blue-soft{background:var(--blue-soft);color:var(--blue);border:1px solid rgba(99,102,241,0.3);}
+.btn-blue-soft:hover{background:rgba(99,102,241,0.18);}
+.btn:disabled{opacity:0.4;cursor:not-allowed;transform:none!important;filter:none!important;}
+.btn-sm{padding:6px 12px;font-size:12px;}
+
+/* ── STAT CARDS ── */
+.stat-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:14px;margin-bottom:24px;}
+.stat-card{
+  background:var(--card);border:1px solid var(--border2);
+  border-radius:var(--radius);padding:18px 20px;position:relative;overflow:hidden;
+}
+.stat-card::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;}
+.stat-card.red::before{background:var(--red);}
+.stat-card.teal::before{background:var(--teal);}
+.stat-card.blue::before{background:var(--blue);}
+.stat-card.warn::before{background:var(--warn);}
+.stat-label{font-family:var(--mono);font-size:9px;letter-spacing:0.12em;text-transform:uppercase;color:var(--muted);margin-bottom:8px;}
+.stat-value{font-family:var(--bebas);font-size:36px;letter-spacing:1px;color:var(--text);line-height:1;}
+.stat-sub{font-size:11px;color:var(--muted);margin-top:4px;}
+
+/* ── CARDS ── */
+.card{background:var(--card);border:1px solid var(--border2);border-radius:var(--radius);margin-bottom:18px;}
+.card-header{
+  display:flex;align-items:center;justify-content:space-between;
+  padding:16px 20px;border-bottom:1px solid var(--border);
+}
+.card-title{font-family:var(--mono);font-size:11px;letter-spacing:0.1em;text-transform:uppercase;color:var(--muted2);display:flex;align-items:center;gap:8px;}
+.card-title::before{content:'';display:inline-block;width:3px;height:13px;background:var(--red);border-radius:2px;}
+.card-body{padding:20px;}
+
+/* ── TABLES ── */
+.tbl-wrap{overflow-x:auto;}
+table{width:100%;border-collapse:collapse;}
+th{font-family:var(--mono);font-size:10px;letter-spacing:0.1em;text-transform:uppercase;color:var(--muted);padding:10px 14px;text-align:left;border-bottom:1px solid var(--border);white-space:nowrap;}
+td{padding:11px 14px;border-bottom:1px solid var(--border);font-size:13px;color:var(--text);}
+tr:last-child td{border-bottom:none;}
+tr:hover td{background:rgba(255,255,255,0.015);}
+.td-mono{font-family:var(--mono);font-size:11px;}
+.badge{display:inline-flex;align-items:center;gap:4px;padding:3px 10px;border-radius:100px;font-family:var(--mono);font-size:10px;font-weight:700;letter-spacing:0.04em;}
+.badge-teal{background:var(--teal-soft);color:var(--teal);border:1px solid rgba(15,185,129,0.2);}
+.badge-red{background:var(--red-soft);color:var(--red);border:1px solid rgba(232,52,28,0.2);}
+.badge-warn{background:var(--warn-soft);color:var(--warn);border:1px solid rgba(245,158,11,0.2);}
+.badge-blue{background:var(--blue-soft);color:var(--blue);border:1px solid rgba(37,99,235,0.2);}
+.badge-muted{background:rgba(255,255,255,0.05);color:var(--muted2);border:1px solid var(--border2);}
+
+/* ── FORMS ── */
+.form-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:14px;}
+.field{display:flex;flex-direction:column;gap:6px;}
+.field label{font-family:var(--mono);font-size:10px;letter-spacing:0.12em;text-transform:uppercase;color:var(--muted);}
+.field input,.field select{
+  background:var(--surface);border:1.5px solid var(--border2);border-radius:7px;
+  padding:10px 14px;font-family:var(--sans);font-size:13px;color:var(--text);outline:none;
+  transition:border-color 0.2s,box-shadow 0.2s;
+}
+.field input::placeholder{color:var(--muted);}
+.field input:focus,.field select:focus{border-color:var(--red);box-shadow:0 0 0 3px var(--red-soft);}
+.field select option{background:var(--surface);}
+
+/* ── FILE UPLOAD ── */
+.upload-zone{
+  border:2px dashed var(--border2);border-radius:var(--radius);
+  padding:32px;text-align:center;cursor:pointer;
+  transition:all 0.2s;position:relative;
+}
+.upload-zone:hover,.upload-zone.drag{border-color:var(--red);background:var(--red-soft);}
+.upload-zone input[type=file]{position:absolute;inset:0;opacity:0;cursor:pointer;width:100%;height:100%;}
+.upload-icon{font-size:32px;margin-bottom:10px;}
+.upload-text{font-size:13px;color:var(--muted2);line-height:1.6;}
+.upload-text strong{color:var(--text);}
+
+/* ── PROGRESS ── */
+.progress-bar{height:4px;background:var(--border2);border-radius:2px;overflow:hidden;margin-top:8px;}
+.progress-fill{height:100%;background:var(--red);border-radius:2px;transition:width 0.4s ease;}
+
+/* ── TOAST ── */
+#toast{
+  position:fixed;bottom:24px;right:24px;z-index:999;
+  display:flex;flex-direction:column;gap:8px;
+}
+.toast-item{
+  display:flex;align-items:center;gap:10px;
+  background:var(--card2);border:1px solid var(--border2);
+  border-radius:10px;padding:12px 16px;
+  font-size:13px;min-width:280px;max-width:380px;
+  animation:slideIn 0.3s ease;
+  box-shadow:0 8px 32px rgba(0,0,0,0.4);
+}
+@keyframes slideIn{from{opacity:0;transform:translateX(20px)}to{opacity:1;transform:none}}
+.toast-item.success{border-left:3px solid var(--teal);}
+.toast-item.error{border-left:3px solid var(--red);}
+.toast-item.warn{border-left:3px solid var(--warn);}
+.toast-icon{font-size:16px;flex-shrink:0;}
+
+/* ── ALERT BOX ── */
+.alert{padding:12px 16px;border-radius:8px;font-size:13px;margin-bottom:16px;display:none;}
+.alert.show{display:block;}
+.alert-warn{background:var(--warn-soft);border:1px solid rgba(245,158,11,0.3);color:var(--warn);}
+.alert-red{background:var(--red-soft);border:1px solid rgba(232,52,28,0.3);color:var(--red);}
+.alert-teal{background:var(--teal-soft);border:1px solid rgba(15,185,129,0.3);color:var(--teal);}
+
+/* ── SEATING GRID ── */
+.hall-selector{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:20px;}
+.hall-btn{
+  padding:7px 16px;border-radius:7px;border:1px solid var(--border2);
+  background:var(--card);color:var(--muted2);cursor:pointer;
+  font-family:var(--mono);font-size:11px;transition:all 0.18s;
+}
+.hall-btn:hover{color:var(--text);border-color:var(--muted2);}
+.hall-btn.active{background:var(--red-soft);border-color:var(--red);color:var(--red);}
+.seat-grid-wrap{overflow-x:auto;}
+.seat-grid-container{display:flex;flex-direction:column;gap:5px;min-width:fit-content;}
+.seat-row{display:flex;gap:5px;align-items:center;}
+.seat-row-lbl{font-family:var(--mono);font-size:10px;color:var(--muted);width:28px;text-align:right;flex-shrink:0;}
+.seat-col-labels{display:flex;gap:5px;padding-left:33px;margin-bottom:4px;}
+.seat-col-lbl{font-family:var(--mono);font-size:9px;color:var(--muted);text-align:center;}
+.seat-cell{
+  border-radius:5px;display:flex;flex-direction:column;
+  align-items:center;justify-content:center;
+  font-size:8px;font-weight:700;color:rgba(255,255,255,0.9);
+  transition:transform 0.15s;cursor:default;position:relative;
+}
+.seat-cell:hover{transform:scale(1.15);z-index:2;}
+.seat-cell.empty{background:rgba(255,255,255,0.04);border:1px dashed rgba(255,255,255,0.1);}
+.seat-cell .s-sub{font-size:7px;opacity:0.75;margin-top:1px;}
+.seat-legend{display:flex;gap:14px;flex-wrap:wrap;margin-top:14px;padding-top:14px;border-top:1px solid var(--border);}
+.legend-item{display:flex;align-items:center;gap:6px;}
+.legend-dot{width:10px;height:10px;border-radius:3px;}
+.legend-lbl{font-family:var(--mono);font-size:10px;color:var(--muted2);}
+
+/* ── ALLOCATION PANEL ── */
+.alloc-status{
+  background:var(--card2);border:1px solid var(--border2);border-radius:var(--radius);
+  padding:24px;text-align:center;margin-bottom:20px;
+}
+.alloc-icon{font-size:48px;margin-bottom:12px;}
+.alloc-title{font-family:var(--bebas);font-size:28px;letter-spacing:1px;color:var(--text);margin-bottom:6px;}
+.alloc-desc{font-size:13px;color:var(--muted2);line-height:1.6;max-width:460px;margin:0 auto 20px;}
+.alloc-meta{display:flex;justify-content:center;gap:24px;flex-wrap:wrap;margin-bottom:24px;}
+.alloc-meta-item{text-align:center;}
+.alloc-meta-val{font-family:var(--bebas);font-size:28px;color:var(--text);display:block;line-height:1;}
+.alloc-meta-val.r{color:var(--red);}
+.alloc-meta-val.g{color:var(--teal);}
+.alloc-meta-lbl{font-family:var(--mono);font-size:9px;color:var(--muted);text-transform:uppercase;letter-spacing:0.08em;margin-top:2px;}
+
+/* ── VIOLATION TABLE ── */
+.viol-severity{display:inline-flex;align-items:center;gap:4px;font-family:var(--mono);font-size:10px;}
+
+/* ── EMPTY STATE ── */
+.empty-state{text-align:center;padding:48px 24px;color:var(--muted);}
+.empty-icon{font-size:40px;margin-bottom:12px;opacity:0.5;}
+.empty-text{font-size:13px;line-height:1.6;}
+
+/* ── SPINNER ── */
+.spinner{display:inline-block;width:16px;height:16px;border:2px solid rgba(255,255,255,0.2);border-top-color:#fff;border-radius:50%;animation:spin 0.7s linear infinite;vertical-align:middle;margin-right:6px;}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+/* ── SKELETON SCREENS ── */
+@keyframes shimmer {
+  0%   { background-position: -600px 0; }
+  100% { background-position:  600px 0; }
+}
+.skel {
+  background: linear-gradient(90deg, var(--surface) 25%, var(--border2) 50%, var(--surface) 75%);
+  background-size: 600px 100%;
+  animation: shimmer 1.4s infinite linear;
+  border-radius: 6px;
+  display: inline-block;
+}
+.skel-stat-val  { width: 60px;  height: 36px; margin: 4px 0; }
+.skel-stat-sub  { width: 90px;  height: 10px; margin-top: 6px; }
+.skel-row       { width: 100%;  height: 18px; margin: 10px 0; }
+.skel-row.short { width: 60%; }
+.skel-row.med   { width: 80%; }
+.skel-bar       { width: 100%;  height: 10px; margin: 14px 0; border-radius: 4px; }
+.skel-td        { width: 80%;   height: 14px; }
+.skel-badge     { width: 50px;  height: 20px; border-radius: 10px; }
+
+/* ── RESPONSIVE ── */
+@media(max-width:768px){
+  .sidebar{position:fixed;left:-220px;height:100%;transition:left 0.3s;z-index:100;}
+  .sidebar.open{left:0;}
+  .main{width:100%;}
+}
+/* ── CONFIRM MODAL ── */
+.confirm-overlay{
+  position:fixed;inset:0;z-index:1000;
+  background:rgba(0,0,0,0.75);backdrop-filter:blur(8px);
+  display:flex;align-items:center;justify-content:center;padding:1rem;
+  opacity:0;pointer-events:none;transition:opacity 0.2s;
+}
+.confirm-overlay.open{opacity:1;pointer-events:all;}
+.confirm-modal{
+  width:100%;max-width:400px;
+  background:#141726;border:1px solid #252a42;border-radius:16px;
+  padding:28px 28px 24px;
+  transform:translateY(20px) scale(0.97);
+  transition:transform 0.25s cubic-bezier(0.34,1.56,0.64,1);
+  box-shadow:0 24px 80px rgba(0,0,0,0.6);
+}
+.confirm-overlay.open .confirm-modal{transform:translateY(0) scale(1);}
+.confirm-icon{font-size:36px;display:block;text-align:center;margin-bottom:14px;}
+.confirm-title{font-size:17px;font-weight:700;color:var(--text);text-align:center;margin-bottom:8px;}
+.confirm-desc{font-size:13px;color:var(--muted);text-align:center;line-height:1.6;margin-bottom:18px;}
+.confirm-input{
+  width:100%;background:var(--surface);border:1.5px solid var(--border2);
+  border-radius:8px;padding:9px 14px;color:var(--text);font-size:13px;
+  outline:none;transition:border-color 0.2s;margin-bottom:16px;
+  font-family:var(--mono);
+}
+.confirm-input:focus{border-color:var(--red);}
+.confirm-input.valid{border-color:#4ade80;}
+.confirm-btns{display:flex;gap:10px;}
+.confirm-btns .btn{flex:1;justify-content:center;}
+</style>
+</head>
+<body>
+<div id="toast"></div>
+<div class="app">
+
+<!-- ── SIDEBAR ── -->
+<aside class="sidebar" id="sidebar">
+  <div class="sidebar-logo">
+    <div class="logo-icon">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+        <rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/>
+        <rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/>
+      </svg>
+    </div>
+    <div class="logo-text">
+      <div class="t1">Exam Alloc</div>
+      <div class="t2">Hall Allocation</div>
+    </div>
+  </div>
+
+  <nav class="nav">
+    <div class="nav-section">Main</div>
+    <div class="nav-item active" onclick="showSection('dashboard')">
+      <span class="ni">📊</span> Dashboard
+    </div>
+    <div class="nav-section">Management</div>
+    <div class="nav-item" onclick="showSection('students')">
+      <span class="ni">👥</span> Students
+      <span class="nav-badge" id="nb-students">0</span>
+    </div>
+    <div class="nav-item" onclick="showSection('halls')">
+      <span class="ni">🏛</span> Halls
+      <span class="nav-badge" id="nb-halls">0</span>
+    </div>
+    <div class="nav-section">Operations</div>
+    <div class="nav-item" onclick="showSection('allocate')">
+      <span class="ni">⚡</span> Allocate
+    </div>
+    <div class="nav-item" onclick="showSection('results')">
+      <span class="ni">🗺</span> Results
+    </div>
+    <div class="nav-item" onclick="showSection('violations')">
+      <span class="ni">⚠️</span> Violations
+      <span class="nav-badge" id="nb-violations" style="background:var(--warn);display:none">0</span>
+    </div>
+  </nav>
+
+  <div class="sidebar-footer">
+    <div class="user-chip">
+      <div class="user-avatar" id="userAvatar">AD</div>
+      <div class="user-info">
+        <div class="un" id="userName">Admin</div>
+        <div class="ur" id="userRole">Administrator</div>
+      </div>
+      <button class="logout-btn" onclick="logout()" title="Logout">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/>
+        </svg>
+      </button>
+    </div>
+  </div>
+</aside>
+
+<!-- ── MAIN ── -->
+<div class="main">
+  <div class="topbar">
+    <span class="topbar-title">Exam Alloc / <span id="topbarTitle">Dashboard</span></span>
+    <div class="topbar-right">
+      <div class="status-pill"><span class="status-dot"></span>API Connected</div>
+    </div>
+  </div>
+
+  <div class="content">
+
+    <!-- ════════════════════════════════════════
+         SECTION: DASHBOARD
+    ════════════════════════════════════════ -->
+    <div class="page-section active" id="sec-dashboard">
+      <div class="page-header">
+        <div class="page-header-left">
+          <div class="ph-tag">Overview</div>
+          <h2>Dashboard</h2>
+        </div>
+        <div class="page-header-right">
+          <button class="btn btn-ghost btn-sm" onclick="loadDashboard()">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-.08-8.4"/></svg>
+            Refresh
+          </button>
+        </div>
+      </div>
+
+      <div class="stat-grid" id="dashStats">
+        <div class="stat-card blue"><div class="stat-label">Total Students</div><div class="stat-value" id="ds-students">—</div><div class="stat-sub">Across all subjects</div></div>
+        <div class="stat-card teal"><div class="stat-label">Allocated</div><div class="stat-value" id="ds-allocated">—</div><div class="stat-sub">Seats assigned</div></div>
+        <div class="stat-card red"><div class="stat-label">Unallocated</div><div class="stat-value" id="ds-unallocated">—</div><div class="stat-sub">Pending / overflow</div></div>
+        <div class="stat-card warn"><div class="stat-label">Violations</div><div class="stat-value" id="ds-violations">—</div><div class="stat-sub">Adjacency conflicts</div></div>
+        <div class="stat-card blue"><div class="stat-label">Total Halls</div><div class="stat-value" id="ds-halls">—</div><div class="stat-sub">Configured</div></div>
+        <div class="stat-card teal"><div class="stat-label">Total Capacity</div><div class="stat-value" id="ds-capacity">—</div><div class="stat-sub">Available seats</div></div>
+      </div>
+
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:18px;">
+        <div class="card">
+          <div class="card-header"><div class="card-title">Hall Utilization</div></div>
+          <div class="card-body" id="hallUtilList">
+            <div class="empty-state"><div class="empty-icon">🏛</div><div class="empty-text">No halls configured yet</div></div>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-header"><div class="card-title">Subject Distribution</div></div>
+          <div class="card-body" id="subjectDistList">
+            <div class="empty-state"><div class="empty-icon">📚</div><div class="empty-text">No allocation run yet</div></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-header"><div class="card-title">Recent Allocation Logs</div></div>
+        <div class="card-body">
+          <div class="tbl-wrap"><table id="logsTable">
+            <thead><tr><th>Run At</th><th>Students</th><th>Allocated</th><th>Unallocated</th><th>Violations</th><th>Duration</th><th>Status</th></tr></thead>
+            <tbody id="logsBody"><tr><td colspan="7"><div class="empty-state" style="padding:20px"><div class="empty-text">No allocation runs yet</div></div></td></tr></tbody>
+          </table></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ════════════════════════════════════════
+         SECTION: STUDENTS
+    ════════════════════════════════════════ -->
+    <div class="page-section" id="sec-students">
+      <div class="page-header">
+        <div class="page-header-left">
+          <div class="ph-tag">Management</div>
+          <h2>Students</h2>
+        </div>
+        <div class="page-header-right">
+          <button class="btn btn-ghost btn-sm" onclick="loadStudents()">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-.08-8.4"/></svg> Refresh
+          </button>
+          <button class="btn btn-warn btn-sm" onclick="confirmClearStudents()">🗑 Clear All</button>
+        </div>
+      </div>
+
+      <!-- Add single student -->
+      <div class="card">
+        <div class="card-header"><div class="card-title">Add Single Student</div></div>
+        <div class="card-body">
+          <div class="form-grid">
+            <div class="field"><label>Student ID</label><input id="s-id" placeholder="e.g. STU001"/></div>
+            <div class="field"><label>Student Name</label><input id="s-name" placeholder="Full name"/></div>
+            <div class="field"><label>Subject Code</label><input id="s-sub" placeholder="e.g. CS101"/></div>
+          </div>
+          <button class="btn btn-red" style="margin-top:14px" onclick="addStudent()">+ Add Student</button>
+        </div>
+      </div>
+
+      <!-- CSV Upload -->
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">Bulk CSV Upload</div>
+          <a href="#" onclick="downloadSampleCSV('students')" class="btn btn-ghost btn-sm">⬇ Sample CSV</a>
+        </div>
+        <div class="card-body">
+          <div class="alert alert-warn" id="stu-warn"></div>
+          <div class="upload-zone" id="stuUploadZone">
+            <input type="file" accept=".csv" id="stuCsvFile" onchange="uploadStudentCSV()"/>
+            <div class="upload-icon">📤</div>
+            <div class="upload-text"><strong>Click or drag CSV here</strong><br>Columns: student_id, student_name, subject_code</div>
+          </div>
+          <div class="progress-bar" style="margin-top:12px"><div class="progress-fill" id="stuProgress" style="width:0%"></div></div>
+        </div>
+      </div>
+
+      <!-- Student list -->
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">Student List</div>
+          <div style="display:flex;gap:8px;align-items:center;">
+            <input id="stuSearch" placeholder="Search…" style="background:var(--surface);border:1px solid var(--border2);border-radius:6px;padding:6px 12px;color:var(--text);font-size:12px;outline:none;width:160px;" oninput="filterStudents()"/>
+            <span class="badge badge-muted" id="stuCount">0 students</span>
+          </div>
+        </div>
+        <div class="card-body" style="padding:0">
+          <div class="tbl-wrap"><table>
+            <thead><tr><th>Student ID</th><th>Name</th><th>Subject Code</th><th>Added</th><th></th></tr></thead>
+            <tbody id="stuBody"><tr><td colspan="5"><div class="empty-state" style="padding:24px"><div class="empty-icon">👥</div><div class="empty-text">No students yet. Add above or upload CSV.</div></div></td></tr></tbody>
+          </table></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ════════════════════════════════════════
+         SECTION: HALLS
+    ════════════════════════════════════════ -->
+    <div class="page-section" id="sec-halls">
+      <div class="page-header">
+        <div class="page-header-left">
+          <div class="ph-tag">Management</div>
+          <h2>Halls</h2>
+        </div>
+        <div class="page-header-right">
+          <button class="btn btn-ghost btn-sm" onclick="loadHalls()">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-.08-8.4"/></svg> Refresh
+          </button>
+          <button class="btn btn-warn btn-sm" onclick="confirmClearHalls()">🗑 Clear All</button>
+        </div>
+      </div>
+
+      <!-- Add single hall -->
+      <div class="card">
+        <div class="card-header"><div class="card-title">Add / Update Hall</div></div>
+        <div class="card-body">
+          <div class="form-grid">
+            <div class="field"><label>Hall ID</label><input id="h-id" placeholder="e.g. H1"/></div>
+            <div class="field"><label>Hall Name</label><input id="h-name" placeholder="e.g. Block A Hall 1"/></div>
+            <div class="field"><label>Capacity</label><input id="h-cap" type="number" placeholder="60" min="1"/></div>
+            <div class="field"><label>Total Rows</label><input id="h-rows" type="number" placeholder="6" min="1"/></div>
+            <div class="field"><label>Total Cols</label><input id="h-cols" type="number" placeholder="10" min="1"/></div>
+          </div>
+          <div style="display:flex;gap:10px;margin-top:14px;align-items:center;">
+            <button class="btn btn-red" onclick="saveHall()">+ Save Hall</button>
+            <span style="font-family:var(--mono);font-size:10px;color:var(--muted)">rows × cols must be ≥ capacity</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- CSV Upload -->
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">Bulk CSV Upload</div>
+          <a href="#" onclick="downloadSampleCSV('halls')" class="btn btn-ghost btn-sm">⬇ Sample CSV</a>
+        </div>
+        <div class="card-body">
+          <div class="alert alert-warn" id="hall-warn"></div>
+          <div class="upload-zone" id="hallUploadZone">
+            <input type="file" accept=".csv" id="hallCsvFile" onchange="uploadHallCSV()"/>
+            <div class="upload-icon">📤</div>
+            <div class="upload-text"><strong>Click or drag CSV here</strong><br>Columns: hall_id, hall_name, capacity, total_rows, total_cols</div>
+          </div>
+          <div class="progress-bar" style="margin-top:12px"><div class="progress-fill" id="hallProgress" style="width:0%"></div></div>
+        </div>
+      </div>
+
+      <!-- Hall list -->
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">Hall List</div>
+          <div style="display:flex;gap:8px;align-items:center;">
+            <input id="hallSearch" placeholder="Search…" style="background:var(--surface);border:1px solid var(--border2);border-radius:6px;padding:6px 12px;color:var(--text);font-size:12px;outline:none;width:160px;" oninput="filterHalls()"/>
+            <span class="badge badge-muted" id="hallCount">0 halls</span>
+          </div>
+        </div>
+        <div class="card-body" style="padding:0">
+          <div class="tbl-wrap"><table>
+            <thead><tr><th>Hall ID</th><th>Name</th><th>Capacity</th><th>Rows</th><th>Cols</th><th>Filled</th><th>Remaining</th><th>Action</th></tr></thead>
+            <tbody id="hallBody"><tr><td colspan="8"><div class="empty-state" style="padding:24px"><div class="empty-icon">🏛</div><div class="empty-text">No halls yet. Add above or upload CSV.</div></div></td></tr></tbody>
+          </table></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ════════════════════════════════════════
+         SECTION: ALLOCATE
+    ════════════════════════════════════════ -->
+    <div class="page-section" id="sec-allocate">
+      <div class="page-header">
+        <div class="page-header-left">
+          <div class="ph-tag">Operations</div>
+          <h2>Allocate</h2>
+        </div>
+      </div>
+
+      <div class="alloc-status">
+        <div class="alloc-icon" id="allocIcon">⚡</div>
+        <div class="alloc-title" id="allocTitle">Ready to Allocate</div>
+        <div class="alloc-desc" id="allocDesc">System will automatically distribute students across halls using the adjacency-separation algorithm. Same-subject students will not be seated next to each other.</div>
+        <div class="alloc-meta" id="allocMeta">
+          <div class="alloc-meta-item"><span class="alloc-meta-val r" id="am-students">—</span><div class="alloc-meta-lbl">Students</div></div>
+          <div class="alloc-meta-item"><span class="alloc-meta-val" id="am-halls">—</span><div class="alloc-meta-lbl">Halls</div></div>
+          <div class="alloc-meta-item"><span class="alloc-meta-val g" id="am-capacity">—</span><div class="alloc-meta-lbl">Capacity</div></div>
+        </div>
+        <button class="btn btn-red" id="allocBtn" onclick="runAllocation()" style="padding:12px 36px;font-size:15px;">
+          ⚡ Run Allocation
+        </button>
+      </div>
+
+      <div class="alert alert-teal" id="allocSuccess"></div>
+      <div class="alert alert-red" id="allocError"></div>
+      <div class="alert alert-warn" id="allocWarn"></div>
+
+      <div class="card" id="allocResultCard" style="display:none">
+        <div class="card-header"><div class="card-title">Allocation Results</div></div>
+        <div class="card-body">
+          <div class="stat-grid">
+            <div class="stat-card teal"><div class="stat-label">Allocated</div><div class="stat-value" id="ar-allocated">—</div></div>
+            <div class="stat-card red"><div class="stat-label">Unallocated</div><div class="stat-value" id="ar-unallocated">—</div></div>
+            <div class="stat-card warn"><div class="stat-label">Violations</div><div class="stat-value" id="ar-violations">—</div></div>
+            <div class="stat-card blue"><div class="stat-label">Duration</div><div class="stat-value" id="ar-duration">—</div></div>
+          </div>
+          <div style="display:flex;gap:10px;margin-top:8px;">
+            <button class="btn btn-teal" onclick="showSection('results')">🗺 View Seating Chart</button>
+            <button class="btn btn-ghost" onclick="exportFile('csv')">⬇ Download CSV</button>
+            <button class="btn btn-ghost" onclick="exportFile('pdf')">⬇ Download PDF</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ════════════════════════════════════════
+         SECTION: RESULTS
+    ════════════════════════════════════════ -->
+    <div class="page-section" id="sec-results">
+      <div class="page-header">
+        <div class="page-header-left">
+          <div class="ph-tag">Output</div>
+          <h2>Results</h2>
+        </div>
+        <div class="page-header-right">
+          <button class="btn btn-ghost btn-sm" onclick="exportFile('csv')">⬇ CSV</button>
+          <button class="btn btn-red btn-sm" onclick="exportFile('pdf')">⬇ PDF</button>
+        </div>
+      </div>
+
+      <!-- Hall selector -->
+      <div class="card">
+        <div class="card-header"><div class="card-title">Hall-wise Seating Grid</div></div>
+        <div class="card-body">
+          <div class="hall-selector" id="hallSelectorBtns"></div>
+          <div id="seatGridWrap">
+            <div class="empty-state"><div class="empty-icon">🗺</div><div class="empty-text">Run allocation first, then select a hall to view the grid.</div></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Unallocated students -->
+      <div class="card">
+        <div class="card-header"><div class="card-title">Unallocated Students</div><span class="badge badge-red" id="unallocCount">0</span></div>
+        <div class="card-body" style="padding:0">
+          <div class="tbl-wrap"><table>
+            <thead><tr><th>Student ID</th><th>Name</th><th>Subject</th><th>Reason</th></tr></thead>
+            <tbody id="unallocBody"><tr><td colspan="4"><div class="empty-state" style="padding:20px"><div class="empty-text">No unallocated students</div></div></td></tr></tbody>
+          </table></div>
+        </div>
+      </div>
+
+      <!-- Student-wise allocation list -->
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">Student Seat List</div>
+          <input id="resSearch" placeholder="Search student…" style="background:var(--surface);border:1px solid var(--border2);border-radius:6px;padding:6px 12px;color:var(--text);font-size:12px;outline:none;width:180px;" oninput="filterResults()"/>
+        </div>
+        <div class="card-body" style="padding:0">
+          <div class="tbl-wrap"><table>
+            <thead><tr><th>Student ID</th><th>Name</th><th>Subject</th><th>Hall</th><th>Seat</th><th>Row</th><th>Col</th></tr></thead>
+            <tbody id="resultsBody"><tr><td colspan="7"><div class="empty-state" style="padding:20px"><div class="empty-text">No allocations yet.</div></div></td></tr></tbody>
+          </table></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ════════════════════════════════════════
+         SECTION: VIOLATIONS
+    ════════════════════════════════════════ -->
+    <div class="page-section" id="sec-violations">
+      <div class="page-header">
+        <div class="page-header-left">
+          <div class="ph-tag">Audit</div>
+          <h2>Violations</h2>
+        </div>
+        <div class="page-header-right">
+          <button class="btn btn-ghost btn-sm" onclick="loadViolations()">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-.08-8.4"/></svg> Refresh
+          </button>
+        </div>
+      </div>
+
+      <div class="stat-grid" style="grid-template-columns:repeat(3,1fr)">
+        <div class="stat-card warn"><div class="stat-label">Total Violations</div><div class="stat-value" id="viol-total">—</div><div class="stat-sub">Adjacency rule breaks</div></div>
+        <div class="stat-card teal"><div class="stat-label">Unallocated</div><div class="stat-value" id="viol-unalloc">—</div><div class="stat-sub">Capacity overflow</div></div>
+        <div class="stat-card blue"><div class="stat-label">Last Run</div><div class="stat-value" id="viol-lastrun" style="font-size:18px">—</div><div class="stat-sub">Allocation timestamp</div></div>
+      </div>
+
+      <div class="card">
+        <div class="card-header"><div class="card-title">Allocation Run Log</div></div>
+        <div class="card-body" style="padding:0">
+          <div class="tbl-wrap"><table>
+            <thead><tr><th>Run At</th><th>Total</th><th>Allocated</th><th>Unallocated</th><th>Violations</th><th>Duration (ms)</th><th>Status</th><th>Message</th></tr></thead>
+            <tbody id="violLogsBody"><tr><td colspan="8"><div class="empty-state" style="padding:24px"><div class="empty-icon">⚠️</div><div class="empty-text">No allocation runs found.</div></div></td></tr></tbody>
+          </table></div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-header"><div class="card-title">Unallocated Students Detail</div></div>
+        <div class="card-body" style="padding:0">
+          <div class="tbl-wrap"><table>
+            <thead><tr><th>Student ID</th><th>Name</th><th>Subject</th><th>Reason</th><th>Logged At</th></tr></thead>
+            <tbody id="violUnallocBody"><tr><td colspan="5"><div class="empty-state" style="padding:24px"><div class="empty-text">No unallocated students.</div></div></td></tr></tbody>
+          </table></div>
+        </div>
+      </div>
+    </div>
+
+    </div>
+
+  </div><!-- /content -->
+</div><!-- /main -->
+</div><!-- /app -->
+
+<script>
+const API = '/api';
+
+// ── AUTH CHECK ──
+const SESSION_TTL = 24 * 60 * 60 * 1000; // 24 hours
+function isSessionExpired() {
+  const t = parseInt(sessionStorage.getItem('ehas_login_time') || '0');
+  return !t || (Date.now() - t) > SESSION_TTL;
+}
+const role = sessionStorage.getItem('ehas_role');
+const user = sessionStorage.getItem('ehas_user');
+const token = sessionStorage.getItem('ehas_token') || '';
+// ── AUTH CHECK ──
+if (!role || !user || !token || role !== 'administrator' || isSessionExpired()) { sessionStorage.clear(); window.location.href = 'login.html'; }
+
+// Set user info
+document.getElementById('userName').textContent = user || 'Admin';
+document.getElementById('userRole').textContent = 'Administrator';
+document.getElementById('userAvatar').textContent = (user || 'AD').substring(0,2).toUpperCase();
+
+async function logout() {
+  const tk = sessionStorage.getItem('ehas_token') || '';
+  if (tk) {
+    try { await fetch('/api/logout', { method:'POST', headers:{'Authorization':'Bearer '+tk} }); }
+    catch(e) {}
+  }
+  sessionStorage.clear();
+  window.location.href = 'login.html';
+}
+// ── AUTO LOGOUT ON INACTIVITY (10 min) ──
+const INACTIVITY_LIMIT = 10 * 60 * 1000;
+let lastActivity = Date.now();
+function resetActivity() { lastActivity = Date.now(); }
+['mousemove','mousedown','keydown','touchstart','scroll','click'].forEach(evt =>
+  document.addEventListener(evt, resetActivity, { passive: true })
+);
+setInterval(() => {
+  if (Date.now() - lastActivity > INACTIVITY_LIMIT) {
+    sessionStorage.clear();
+    window.location.href = 'login.html';
+  }
+}, 30 * 1000); // check every 30 seconds
+
+let currentSection = 'dashboard';
+function showSection(name) {
+  document.querySelectorAll('.page-section').forEach(s => s.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  document.getElementById('sec-' + name).classList.add('active');
+  document.querySelectorAll('.nav-item').forEach(n => {
+    if (n.textContent.trim().toLowerCase().includes(name.toLowerCase().replace('dashboard','dashboard'))) {
+      n.classList.add('active');
+    }
+  });
+  // fix: match by onclick
+  document.querySelectorAll('.nav-item').forEach(n => {
+    if (n.getAttribute('onclick') === `showSection('${name}')`) n.classList.add('active');
+  });
+  document.getElementById('topbarTitle').textContent = name.charAt(0).toUpperCase() + name.slice(1);
+  currentSection = name;
+  // Lazy load
+  if (name === 'dashboard') loadDashboard();
+  if (name === 'students')  { skelTableRows('stuBody', 5); loadStudents(); }
+  if (name === 'halls')     { skelTableRows('hallBody', 8); loadHalls(); }
+  if (name === 'allocate')  loadAllocateMeta();
+  if (name === 'results')   loadResults();
+  if (name === 'violations') loadViolations();
+}
+
+// ── TOAST ──
+function toast(msg, type='success') {
+  const icons = { success:'✅', error:'❌', warn:'⚠️' };
+  const el = document.createElement('div');
+  el.className = `toast-item ${type}`;
+  el.innerHTML = `<span class="toast-icon">${icons[type]||'ℹ️'}</span><span>${msg}</span>`;
+  document.getElementById('toast').appendChild(el);
+  setTimeout(() => el.remove(), 3500);
+}
+
+// ── API HELPER ──
+async function api(path, method='GET', body=null) {
+  const tk = sessionStorage.getItem('ehas_token') || '';
+  const opts = { method, headers:{'Content-Type':'application/json', 'Authorization':'Bearer ' + tk} };
+  if (body) opts.body = JSON.stringify(body);
+  const res = await fetch(API + path, opts);
+  if (res.status === 401) { sessionStorage.clear(); window.location.href = 'login.html'; return {}; }
+  return res.json();
+}
+
+// ══════════════════════════════════════
+// DASHBOARD
+// ══════════════════════════════════════
+async function loadDashboard() {
+  try {
+    const [stuRes, hallRes, allocRes, logRes, subRes] = await Promise.allSettled([
+      api('/students'), api('/halls'), api('/allocations/summary'),
+      api('/logs'), api('/allocations/subject-distribution')
+    ]);
+
+    // Safely unwrap each result — use empty fallback if that call failed
+    const stuData   = stuRes.status   === 'fulfilled' ? stuRes.value   : {};
+    const hallData  = hallRes.status  === 'fulfilled' ? hallRes.value  : {};
+    const allocData = allocRes.status === 'fulfilled' ? allocRes.value : {};
+    const logData   = logRes.status   === 'fulfilled' ? logRes.value   : {};
+    const subData   = subRes.status   === 'fulfilled' ? subRes.value   : {};
+
+    const students = stuData.total || 0;
+    const allocated = (allocData.data||[]).reduce((s,h)=>s+h.seats_filled,0);
+    const capacity  = (allocData.data||[]).reduce((s,h)=>s+h.capacity,0);
+    const lastLog   = (logData.data||[])[0];
+    document.getElementById('ds-students').textContent   = students;
+    document.getElementById('ds-allocated').textContent  = allocated;
+    document.getElementById('ds-unallocated').textContent= lastLog ? lastLog.total_unallocated : '0';
+    document.getElementById('ds-violations').textContent = lastLog ? lastLog.constraint_violations : '0';
+    document.getElementById('ds-halls').textContent      = (hallData.data||[]).length;
+    document.getElementById('ds-capacity').textContent   = capacity;
+    // Update nav badges
+    document.getElementById('nb-students').textContent = students;
+    document.getElementById('nb-halls').textContent    = (hallData.data||[]).length;
+    if (lastLog && lastLog.constraint_violations > 0) {
+      const nb = document.getElementById('nb-violations');
+      nb.textContent = lastLog.constraint_violations;
+      nb.style.display = 'inline';
+    }
+    // Hall utilization
+    const hulDiv = document.getElementById('hallUtilList');
+    if ((allocData.data||[]).length) {
+      hulDiv.innerHTML = allocData.data.map(h => `
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">
+          <span style="font-family:var(--mono);font-size:11px;color:var(--text);width:50px">${h.hall_id}</span>
+          <div style="flex:1;background:var(--border2);border-radius:3px;height:6px;overflow:hidden">
+            <div style="height:100%;background:var(--teal);width:${Math.min(100,Math.round(h.seats_filled/h.capacity*100))}%;border-radius:3px;transition:width 0.6s"></div>
+          </div>
+          <span style="font-family:var(--mono);font-size:10px;color:var(--muted);width:64px;text-align:right">${h.seats_filled}/${h.capacity}</span>
+        </div>`).join('');
+    } else {
+      hulDiv.innerHTML = '<div class="empty-state"><div class="empty-icon">🏛</div><div class="empty-text">No halls configured yet</div></div>';
+    }
+    // Subject dist
+    const sdDiv = document.getElementById('subjectDistList');
+    const COLORS = ['#2563eb','#0fb981','#f59e0b','#e8341c','#a78bfa','#ec4899'];
+    const subjMap = {};
+    (subData.data||[]).forEach(s => { subjMap[s.subject_code] = (subjMap[s.subject_code]||0)+s.student_count; });
+    const subjects = Object.entries(subjMap);
+    if (subjects.length) {
+      sdDiv.innerHTML = subjects.map(([code, count], i) => `
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">
+          <div style="width:10px;height:10px;border-radius:3px;background:${COLORS[i%COLORS.length]};flex-shrink:0"></div>
+          <span style="font-family:var(--mono);font-size:11px;color:var(--text);flex:1">${code}</span>
+          <span class="badge badge-muted">${count}</span>
+        </div>`).join('');
+    } else {
+      sdDiv.innerHTML = '<div class="empty-state"><div class="empty-icon">📚</div><div class="empty-text">No allocation run yet</div></div>';
+    }
+    // Logs table
+    const logsBody = document.getElementById('logsBody');
+    if ((logData.data||[]).length) {
+      logsBody.innerHTML = logData.data.slice(0,10).map(l => `
+        <tr>
+          <td class="td-mono">${new Date(l.run_at).toLocaleString()}</td>
+          <td>${l.total_students}</td>
+          <td><span style="color:var(--teal)">${l.total_allocated}</span></td>
+          <td><span style="color:${l.total_unallocated>0?'var(--red)':'var(--muted)'}">${l.total_unallocated}</span></td>
+          <td><span style="color:${l.constraint_violations>0?'var(--warn)':'var(--muted)'}">${l.constraint_violations}</span></td>
+          <td class="td-mono">${l.duration_ms}ms</td>
+          <td><span class="badge ${l.status==='SUCCESS'?'badge-teal':l.status==='PARTIAL'?'badge-warn':'badge-red'}">${l.status}</span></td>
+        </tr>`).join('');
+    }
+  } catch(e) { toast('Some dashboard data could not be loaded', 'warn'); }
+  finally {
+    // Always clear any remaining skeletons so they never stay stuck
+    const hulDiv = document.getElementById('hallUtilList');
+    const sdDiv  = document.getElementById('subjectDistList');
+    const logsBody = document.getElementById('logsBody');
+    if (hulDiv && hulDiv.querySelector('.skel'))
+      hulDiv.innerHTML = '<div class="empty-state"><div class="empty-icon">🏛</div><div class="empty-text">No halls configured yet</div></div>';
+    if (sdDiv && sdDiv.querySelector('.skel'))
+      sdDiv.innerHTML  = '<div class="empty-state"><div class="empty-icon">📚</div><div class="empty-text">No allocation run yet</div></div>';
+    if (logsBody && logsBody.querySelector('.skel'))
+      logsBody.innerHTML = '<tr><td colspan="7"><div class="empty-state" style="padding:20px"><div class="empty-text">No allocation runs yet</div></div></td></tr>';
+    ['ds-students','ds-allocated','ds-unallocated','ds-violations','ds-halls','ds-capacity'].forEach(id => {
+      const el = document.getElementById(id);
+      if (el && el.querySelector('.skel')) el.textContent = '0';
+    });
+  }
+}
+
+// ══════════════════════════════════════
+// STUDENTS
+// ══════════════════════════════════════
+let allStudents = [];
+async function loadStudents() {
+  try {
+    const data = await api('/students');
+    allStudents = data.data || [];
+    renderStudents(allStudents);
+    document.getElementById('stuCount').textContent = allStudents.length + ' students';
+    document.getElementById('nb-students').textContent = allStudents.length;
+  } catch(e) { toast('Failed to load students', 'error'); }
+}
+
+function renderStudents(list) {
+  const tbody = document.getElementById('stuBody');
+  if (!list.length) {
+    tbody.innerHTML = `<tr><td colspan="5"><div class="empty-state" style="padding:24px"><div class="empty-icon">👥</div><div class="empty-text">No students yet.</div></div></td></tr>`;
+    return;
+  }
+  tbody.innerHTML = list.map(s => `
+    <tr>
+      <td class="td-mono">${s.student_id}</td>
+      <td>${s.student_name}</td>
+      <td><span class="badge badge-blue">${s.subject_code}</span></td>
+      <td class="td-mono" style="color:var(--muted)">${new Date(s.created_at).toLocaleDateString()}</td>
+      <td><button class="btn btn-warn btn-sm" onclick="deleteStudent('${s.student_id}')">🗑 Delete</button></td>
+    </tr>`).join('');
+}
+
+function filterStudents() {
+  const q = document.getElementById('stuSearch').value.toLowerCase();
+  renderStudents(allStudents.filter(s =>
+    s.student_id.toLowerCase().includes(q) ||
+    s.student_name.toLowerCase().includes(q) ||
+    s.subject_code.toLowerCase().includes(q)
+  ));
+}
+
+async function addStudent() {
+  const id   = document.getElementById('s-id').value.trim();
+  const name = document.getElementById('s-name').value.trim();
+  const sub  = document.getElementById('s-sub').value.trim();
+  if (!id||!name||!sub) { toast('All fields required', 'warn'); return; }
+  try {
+    const res = await api('/students', 'POST', { student_id:id, student_name:name, subject_code:sub });
+    if (res.success) { toast('Student added!'); loadStudents(); document.getElementById('s-id').value=''; document.getElementById('s-name').value=''; document.getElementById('s-sub').value=''; }
+    else toast(res.message, 'error');
+  } catch(e) { toast('Error adding student', 'error'); }
+}
+
+async function deleteStudent(id) {
+  if (!confirm(`Delete student ${id}? This will also remove their seat allocation.`)) return;
+  try {
+    const res = await api('/students/' + id, 'DELETE');
+    if (res.success) { toast(`Student ${id} deleted`, 'warn'); loadStudents(); }
+    else toast(res.message, 'error');
+  } catch(e) { toast('Error deleting student', 'error'); }
+}
+
+async function uploadStudentCSV() {
+  const fileInput = document.getElementById('stuCsvFile');
+  const file = fileInput.files[0];
+  if (!file) return;
+  const prog   = document.getElementById('stuProgress');
+  const warnEl = document.getElementById('stu-warn');
+  prog.style.width = '30%';
+  try {
+    const csvText = await file.text();
+    fileInput.value = '';
+    const tkc = sessionStorage.getItem('ehas_token') || '';
+    const res  = await fetch(API + '/students/csv', {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + tkc },
+      body:    JSON.stringify({ csvData: csvText })
+    });
+    const data = await res.json();
+    prog.style.width = '100%';
+    setTimeout(() => prog.style.width = '0%', 800);
+    if (data.success) {
+      toast(data.message);
+      if (data.warning) { warnEl.textContent = '⚠️ ' + data.warning; warnEl.classList.add('show'); }
+      else warnEl.classList.remove('show');
+      loadStudents();
+    } else {
+      toast(data.message, 'error');
+    }
+  } catch(e) {
+    console.error('Student CSV upload error:', e);
+    toast('Upload failed: ' + e.message, 'error');
+    prog.style.width = '0%';
+  }
+}
+
+async function confirmClearStudents() {
+  showConfirmModal({
+    icon:        '👥',
+    title:       'Clear All Students?',
+    desc:        'This will permanently delete <strong>all students and their seat allocations</strong>. Type <strong>DELETE</strong> below to confirm.',
+    keyword:     'DELETE',
+    btnLabel:    '🗑 Clear All Students',
+    onConfirm:   async () => {
+      const res = await api('/students', 'DELETE');
+      if (res.success) { toast('All students cleared', 'warn'); loadStudents(); }
+      else toast(res.message, 'error');
+    }
+  });
+}
+
+// ══════════════════════════════════════
+// HALLS
+// ══════════════════════════════════════
+let allHalls = [];
+let hallSummMap = {};
+
+async function loadHalls() {
+  try {
+    const [hallData, summData] = await Promise.all([api('/halls'), api('/allocations/summary')]);
+    allHalls = hallData.data || [];
+    hallSummMap = {};
+    (summData.data||[]).forEach(h => hallSummMap[h.hall_id] = h);
+    document.getElementById('hallCount').textContent = allHalls.length + ' halls';
+    document.getElementById('nb-halls').textContent  = allHalls.length;
+    renderHalls(allHalls);
+  } catch(e) { toast('Failed to load halls', 'error'); }
+}
+
+function renderHalls(list) {
+  const tbody = document.getElementById('hallBody');
+  if (!list.length) {
+    tbody.innerHTML = `<tr><td colspan="8"><div class="empty-state" style="padding:24px"><div class="empty-icon">🏛</div><div class="empty-text">No halls yet. Add above or upload CSV.</div></div></td></tr>`;
+    return;
+  }
+  tbody.innerHTML = list.map(h => {
+    const s = hallSummMap[h.hall_id] || {};
+    return `<tr>
+      <td class="td-mono">${h.hall_id}</td>
+      <td>${h.hall_name}</td>
+      <td>${h.capacity}</td>
+      <td>${h.total_rows}</td>
+      <td>${h.total_cols}</td>
+      <td><span style="color:var(--teal)">${s.seats_filled||0}</span></td>
+      <td><span style="color:var(--muted)">${s.seats_remaining!==undefined?s.seats_remaining:h.capacity}</span></td>
+      <td><button class="btn btn-warn btn-sm" onclick="deleteHall('${h.hall_id}')">🗑 Delete</button></td>
+    </tr>`;
+  }).join('');
+}
+
+function filterHalls() {
+  const q = document.getElementById('hallSearch').value.toLowerCase();
+  renderHalls(allHalls.filter(h =>
+    h.hall_id.toLowerCase().includes(q) ||
+    h.hall_name.toLowerCase().includes(q) ||
+    String(h.capacity).includes(q)
+  ));
+}
+
+async function confirmClearHalls() {
+  showConfirmModal({
+    icon:        '🏛',
+    title:       'Clear All Halls?',
+    desc:        'This will permanently delete <strong>all halls and their seat allocations</strong>. Type <strong>DELETE</strong> below to confirm.',
+    keyword:     'DELETE',
+    btnLabel:    '🗑 Clear All Halls',
+    onConfirm:   async () => {
+      const res = await api('/halls', 'DELETE');
+      if (res.success) { toast('All halls cleared', 'warn'); loadHalls(); }
+      else toast(res.message, 'error');
+    }
+  });
+}
+
+async function saveHall() {
+  const id   = document.getElementById('h-id').value.trim();
+  const name = document.getElementById('h-name').value.trim();
+  const cap  = parseInt(document.getElementById('h-cap').value);
+  const rows = parseInt(document.getElementById('h-rows').value);
+  const cols = parseInt(document.getElementById('h-cols').value);
+  if (!id||isNaN(cap)||isNaN(rows)||isNaN(cols)) { toast('All fields required', 'warn'); return; }
+  if (rows*cols < cap) { toast('rows × cols must be ≥ capacity', 'warn'); return; }
+  try {
+    const res = await api('/halls','POST',{ hall_id:id, hall_name:name||id, capacity:cap, total_rows:rows, total_cols:cols });
+    if (res.success) { toast(res.message); loadHalls(); }
+    else toast(res.message, 'error');
+  } catch(e) { toast('Error saving hall','error'); }
+}
+
+async function deleteHall(id) {
+  if (!confirm(`Delete hall ${id}? This will also remove its allocations.`)) return;
+  try {
+    const res = await api('/halls/'+id,'DELETE');
+    if (res.success) { toast(res.message,'warn'); loadHalls(); }
+    else toast(res.message,'error');
+  } catch(e) { toast('Error','error'); }
+}
+
+async function uploadHallCSV() {
+  const fileInput = document.getElementById('hallCsvFile');
+  const file = fileInput.files[0];
+  if (!file) return;
+  // FIX #8 & #9: Added progress bar feedback and error display for hall CSV
+  const prog   = document.getElementById('hallProgress');
+  const warnEl = document.getElementById('hall-warn');
+  prog.style.width = '30%';
+  warnEl.classList.remove('show');
+  try {
+    const csvText = await file.text();
+    fileInput.value = '';
+    const tk = sessionStorage.getItem('ehas_token') || '';
+    const res  = await fetch(API + '/halls/csv', {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + tk },
+      body:    JSON.stringify({ csvData: csvText })
+    });
+    const data = await res.json();
+    prog.style.width = '100%';
+    setTimeout(() => prog.style.width = '0%', 800);
+    if (data.success) {
+      toast(data.message);
+      if (data.errors && data.errors.length) {
+        warnEl.textContent = '⚠️ ' + data.errors.length + ' row(s) skipped: ' + data.errors.join(' | ');
+        warnEl.classList.add('show');
+      }
+      loadHalls();
+    } else {
+      toast(data.message, 'error');
+      warnEl.textContent = '❌ ' + data.message;
+      warnEl.classList.add('show');
+    }
+  } catch(e) {
+    console.error('Hall CSV upload error:', e);
+    toast('Upload failed: ' + e.message, 'error');
+    prog.style.width = '0%';
+  }
+}
+
+// ══════════════════════════════════════
+// ALLOCATE
+// ══════════════════════════════════════
+async function loadAllocateMeta() {
+  try {
+    const [stuData, hallData] = await Promise.all([api('/students'), api('/halls')]);
+    document.getElementById('am-students').textContent = stuData.total || 0;
+    document.getElementById('am-halls').textContent    = (hallData.data||[]).length;
+    const cap = (hallData.data||[]).reduce((s,h)=>s+h.capacity,0);
+    document.getElementById('am-capacity').textContent = cap;
+  } catch(e) {}
+}
+
+async function runAllocation() {
+  const btn = document.getElementById('allocBtn');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner"></span>Allocating...';
+  document.getElementById('allocIcon').textContent = '⏳';
+  document.getElementById('allocTitle').textContent = 'Running Allocation...';
+  ['allocSuccess','allocError','allocWarn'].forEach(id => document.getElementById(id).classList.remove('show'));
+  document.getElementById('allocResultCard').style.display = 'none';
+  try {
+    const res = await api('/allocate','POST');
+    btn.disabled = false;
+    btn.innerHTML = '⚡ Run Allocation';
+    if (res.success) {
+      document.getElementById('allocIcon').textContent  = res.total_unallocated > 0 ? '⚠️' : '✅';
+      document.getElementById('allocTitle').textContent = res.status === 'SUCCESS' ? 'Allocation Complete!' : 'Partial Allocation';
+      document.getElementById('ar-allocated').textContent   = res.total_allocated;
+      document.getElementById('ar-unallocated').textContent = res.total_unallocated;
+      document.getElementById('ar-violations').textContent  = res.constraint_violations;
+      document.getElementById('ar-duration').textContent    = res.duration_ms + 'ms';
+      document.getElementById('allocResultCard').style.display = 'block';
+      const sEl = document.getElementById('allocSuccess');
+      sEl.textContent = `✅ ${res.total_allocated} students allocated in ${res.duration_ms}ms`;
+      sEl.classList.add('show');
+      if (res.total_unallocated > 0) {
+        const wEl = document.getElementById('allocWarn');
+        wEl.textContent = `⚠️ ${res.total_unallocated} students could not be allocated (capacity overflow)`;
+        wEl.classList.add('show');
+      }
+    } else {
+      document.getElementById('allocIcon').textContent = '❌';
+      document.getElementById('allocTitle').textContent = 'Allocation Failed';
+      const eEl = document.getElementById('allocError');
+      eEl.textContent = '❌ ' + res.message;
+      eEl.classList.add('show');
+    }
+  } catch(e) {
+    btn.disabled = false;
+    btn.innerHTML = '⚡ Run Allocation';
+    document.getElementById('allocIcon').textContent = '❌';
+    document.getElementById('allocTitle').textContent = 'Connection Error';
+    const eEl = document.getElementById('allocError');
+    eEl.textContent = '❌ Could not connect to API server';
+    eEl.classList.add('show');
+  }
+}
+
+// ══════════════════════════════════════
+// RESULTS
+// ══════════════════════════════════════
+const SEAT_COLORS = ['#2563eb','#0fb981','#f59e0b','#e8341c','#a78bfa','#ec4899','#06b6d4','#84cc16'];
+const subjectColorMap = {};
+let colorIdx = 0;
+function getSubjectColor(sub) {
+  if (!subjectColorMap[sub]) { subjectColorMap[sub] = SEAT_COLORS[colorIdx++ % SEAT_COLORS.length]; }
+  return subjectColorMap[sub];
+}
+
+let allAllocations = [];
+async function loadResults() {
+  try {
+    const [allocData, hallData, unallocData] = await Promise.all([
+      api('/allocations'), api('/halls'), api('/allocations/unallocated')
+    ]);
+    allAllocations = allocData.data || [];
+    // Build hall selector
+    const halls = hallData.data || [];
+    const btnDiv = document.getElementById('hallSelectorBtns');
+    btnDiv.innerHTML = halls.map((h,i) =>
+      `<div class="hall-btn ${i===0?'active':''}" onclick="selectHallGrid('${h.hall_id}',this)">${h.hall_id}</div>`
+    ).join('');
+    if (halls.length) selectHallGrid(halls[0].hall_id, btnDiv.querySelector('.hall-btn'));
+    // Unallocated
+    const unalloc = unallocData.data || [];
+    document.getElementById('unallocCount').textContent = unalloc.length;
+    const ub = document.getElementById('unallocBody');
+    ub.innerHTML = unalloc.length ? unalloc.map(u => `
+      <tr>
+        <td class="td-mono">${u.student_id}</td>
+        <td>${u.student_name}</td>
+        <td><span class="badge badge-blue">${u.subject_code}</span></td>
+        <td style="color:var(--warn)">${u.reason}</td>
+      </tr>`).join('') :
+      `<tr><td colspan="4"><div class="empty-state" style="padding:20px"><div class="empty-text">No unallocated students ✅</div></div></td></tr>`;
+    // Student list
+    renderResults(allAllocations);
+  } catch(e) { toast('Failed to load results','error'); }
+}
+
+async function selectHallGrid(hallId, btn) {
+  document.querySelectorAll('.hall-btn').forEach(b => b.classList.remove('active'));
+  if (btn) btn.classList.add('active');
+  try {
+    const data = await api('/allocations/hall/' + hallId);
+    if (!data.success) { document.getElementById('seatGridWrap').innerHTML = '<div class="empty-state"><div class="empty-text">No data for this hall.</div></div>'; return; }
+    const { hall, grid } = data;
+    const cellW = Math.max(40, Math.min(72, Math.floor(600 / hall.total_cols)));
+    const cellH = 48;
+    let html = `<div class="seat-grid-wrap"><div class="seat-grid-container">`;
+    // Column labels
+    html += `<div style="display:flex;gap:5px;padding-left:33px;margin-bottom:4px;">`;
+    for (let c=0;c<hall.total_cols;c++) html += `<div style="width:${cellW}px;font-family:var(--mono);font-size:9px;color:var(--muted);text-align:center">C${c+1}</div>`;
+    html += `</div>`;
+    grid.forEach((row,r) => {
+      html += `<div class="seat-row"><div class="seat-row-lbl">R${r+1}</div>`;
+      row.forEach(seat => {
+        if (seat.occupied) {
+          const bg = getSubjectColor(seat.subject_code);
+          // FIX #18: title= was inside style= string so tooltip never showed. Now correct HTML attribute.
+          html += `<div class="seat-cell" title="${seat.student_id} — ${seat.student_name} (${seat.subject_code})" style="width:${cellW}px;height:${cellH}px;background:${bg}20;border:1px solid ${bg}60">
+            <span style="color:${bg};font-weight:700;font-size:${cellW<50?7:9}px">${seat.subject_code}</span>
+            <span class="s-sub" style="color:rgba(255,255,255,0.6);font-size:7px">${seat.student_id.slice(-4)}</span>
+          </div>`;
+        } else {
+          html += `<div class="seat-cell empty" style="width:${cellW}px;height:${cellH}px"></div>`;
+        }
+      });
+      html += `</div>`;
+    });
+    // Legend
+    const subjects = [...new Set(grid.flat().filter(s=>s.occupied).map(s=>s.subject_code))];
+    html += `<div class="seat-legend">`;
+    subjects.forEach(sub => {
+      const clr = getSubjectColor(sub);
+      html += `<div class="legend-item"><div class="legend-dot" style="background:${clr}"></div><span class="legend-lbl">${sub}</span></div>`;
+    });
+    html += `</div></div></div>`;
+    document.getElementById('seatGridWrap').innerHTML = html;
+  } catch(e) { toast('Error loading hall grid','error'); }
+}
+
+function renderResults(list) {
+  const tbody = document.getElementById('resultsBody');
+  if (!list.length) {
+    tbody.innerHTML = `<tr><td colspan="7"><div class="empty-state" style="padding:20px"><div class="empty-text">No allocations yet.</div></div></td></tr>`;
+    return;
+  }
+  tbody.innerHTML = list.map(a => `
+    <tr>
+      <td class="td-mono">${a.student_id}</td>
+      <td>${a.student_name}</td>
+      <td><span class="badge badge-blue">${a.subject_code}</span></td>
+      <td class="td-mono">${a.hall_id}</td>
+      <td class="td-mono" style="color:var(--teal)">${a.seat_label}</td>
+      <td class="td-mono">${a.seat_row}</td>
+      <td class="td-mono">${a.seat_col}</td>
+    </tr>`).join('');
+}
+
+function filterResults() {
+  const q = document.getElementById('resSearch').value.toLowerCase();
+  renderResults(allAllocations.filter(a =>
+    a.student_id.toLowerCase().includes(q) ||
+    a.student_name.toLowerCase().includes(q) ||
+    a.subject_code.toLowerCase().includes(q) ||
+    a.hall_id.toLowerCase().includes(q)
+  ));
+}
+
+// ══════════════════════════════════════
+// VIOLATIONS
+// ══════════════════════════════════════
+async function loadViolations() {
+  try {
+    const [logData, unallocData] = await Promise.all([api('/logs'), api('/allocations/unallocated')]);
+    const logs = logData.data || [];
+    const lastLog = logs[0];
+    document.getElementById('viol-total').textContent   = lastLog ? lastLog.constraint_violations : '—';
+    document.getElementById('viol-unalloc').textContent = lastLog ? lastLog.total_unallocated : '—';
+    document.getElementById('viol-lastrun').textContent = lastLog ? new Date(lastLog.run_at).toLocaleDateString() : '—';
+    // Logs
+    const lb = document.getElementById('violLogsBody');
+    lb.innerHTML = logs.length ? logs.map(l => `
+      <tr>
+        <td class="td-mono">${new Date(l.run_at).toLocaleString()}</td>
+        <td>${l.total_students}</td>
+        <td style="color:var(--teal)">${l.total_allocated}</td>
+        <td style="color:${l.total_unallocated>0?'var(--red)':'var(--muted)'}">${l.total_unallocated}</td>
+        <td style="color:${l.constraint_violations>0?'var(--warn)':'var(--muted)'}">${l.constraint_violations}</td>
+        <td class="td-mono">${l.duration_ms}</td>
+        <td><span class="badge ${l.status==='SUCCESS'?'badge-teal':l.status==='PARTIAL'?'badge-warn':'badge-red'}">${l.status}</span></td>
+        <td style="color:var(--muted);font-size:12px">${l.message||'—'}</td>
+      </tr>`).join('') :
+      `<tr><td colspan="8"><div class="empty-state" style="padding:24px"><div class="empty-icon">⚠️</div><div class="empty-text">No runs yet.</div></div></td></tr>`;
+    // Unallocated
+    const ub = document.getElementById('violUnallocBody');
+    const unalloc = unallocData.data || [];
+    ub.innerHTML = unalloc.length ? unalloc.map(u => `
+      <tr>
+        <td class="td-mono">${u.student_id}</td>
+        <td>${u.student_name}</td>
+        <td><span class="badge badge-blue">${u.subject_code}</span></td>
+        <td style="color:var(--warn)">${u.reason}</td>
+        <td class="td-mono" style="color:var(--muted)">${new Date(u.logged_at).toLocaleString()}</td>
+      </tr>`).join('') :
+      `<tr><td colspan="5"><div class="empty-state" style="padding:24px"><div class="empty-text">No unallocated students ✅</div></div></td></tr>`;
+  } catch(e) { toast('Failed to load violations','error'); }
+}
+
+// ══════════════════════════════════════
+// SAMPLE CSV
+// ══════════════════════════════════════
+function downloadSampleCSV(type) {
+  const data = type === 'students'
+    ? 'student_id,student_name,subject_code\nSTU001,John Smith,CS101\nSTU002,Jane Doe,EC201\nSTU003,Bob Kumar,ME301'
+    : 'hall_id,hall_name,capacity,total_rows,total_cols\nH1,Block A Hall 1,48,6,8\nH2,Block B Hall 2,60,6,10';
+  const blob = new Blob([data], {type:'text/csv'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a'); a.href=url; a.download=`sample_${type}.csv`; a.click();
+  URL.revokeObjectURL(url);
+}
+
+function esc(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+
+// ── EXPORT (with auth token) ──
+
+function esc(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+
+// ── EXPORT (with auth token) ──
+function exportFile(type) {
+  const tk = sessionStorage.getItem('ehas_token') || '';
+  fetch(API + '/export/' + type, { headers: { 'Authorization': 'Bearer ' + tk } })
+    .then(res => res.blob())
+    .then(blob => {
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'Seating_Chart_' + Date.now() + '.' + type;
+      a.click();
+      URL.revokeObjectURL(url);
+    })
+    .catch(() => toast('Export failed', 'error'));
+}
+
+// ── CONFIRM MODAL ENGINE ──
+let _confirmCallback = null;
+let _confirmKeyword  = 'DELETE';
+
+function showConfirmModal({ icon, title, desc, keyword, btnLabel, onConfirm }) {
+  _confirmCallback = onConfirm;
+  _confirmKeyword  = keyword || 'DELETE';
+  document.getElementById('confirmIcon').textContent    = icon  || '⚠️';
+  document.getElementById('confirmTitle').textContent   = title || 'Are you sure?';
+  document.getElementById('confirmDesc').innerHTML      = desc  || '';
+  document.getElementById('confirmInput').value         = '';
+  document.getElementById('confirmInput').placeholder   = `Type ${_confirmKeyword} to confirm`;
+  document.getElementById('confirmOkBtn').textContent   = btnLabel || 'Confirm';
+  document.getElementById('confirmOkBtn').disabled      = true;
+  document.getElementById('confirmInput').classList.remove('valid');
+  document.getElementById('confirmOverlay').classList.add('open');
+  setTimeout(() => document.getElementById('confirmInput').focus(), 200);
+}
+function closeConfirmModal() {
+  document.getElementById('confirmOverlay').classList.remove('open');
+  _confirmCallback = null;
+}
+function onConfirmType() {
+  const val   = document.getElementById('confirmInput').value;
+  const match = val === _confirmKeyword;
+  document.getElementById('confirmOkBtn').disabled = !match;
+  document.getElementById('confirmInput').classList.toggle('valid', match);
+}
+async function onConfirmOk() {
+  if (!_confirmCallback) return;
+  const cb = _confirmCallback;  // save before closeConfirmModal() nulls it
+  closeConfirmModal();
+  try { await cb(); }
+  catch(e) { toast('Action failed: ' + (e.message || 'Unknown error'), 'error'); }
+}
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape' && document.getElementById('confirmOverlay').classList.contains('open')) {
+    closeConfirmModal();
+  }
+});
+
+// ── INITIAL LOAD ──
+
+// ── SKELETON HELPERS ──
+function skelStatCards() {
+  // Shimmer the existing stat-value elements — do NOT replace innerHTML (that destroys the IDs)
+  ['ds-students','ds-allocated','ds-unallocated','ds-violations','ds-halls','ds-capacity'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) { el.innerHTML = '<span class="skel skel-stat-val"></span>'; }
+  });
+}
+function skelTableRows(tbodyId, cols, count = 5) {
+  const el = document.getElementById(tbodyId);
+  if (!el) return;
+  el.innerHTML = Array(count).fill(
+    `<tr>${Array(cols).fill(`<td><span class="skel skel-td"></span></td>`).join('')}</tr>`
+  ).join('');
+}
+function skelList(elId, count = 4) {
+  const el = document.getElementById(elId);
+  if (!el) return;
+  el.innerHTML = Array(count).fill(`
+    <div style="display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:1px solid var(--border2)">
+      <span class="skel skel-row med" style="flex:1"></span>
+      <span class="skel skel-bar" style="width:80px;margin:0"></span>
+      <span class="skel skel-stat-sub" style="width:36px;margin:0"></span>
+    </div>`).join('');
+}
+
+// Show skeletons immediately on page load
+skelStatCards();
+skelTableRows('logsBody', 7);
+skelList('hallUtilList');
+skelList('subjectDistList');
+
+// Load nav badges independently so they always show correct counts
+api('/students').then(d => { if (d.total !== undefined) document.getElementById('nb-students').textContent = d.total; }).catch(()=>{});
+api('/halls').then(d => { if (d.data) document.getElementById('nb-halls').textContent = d.data.length; }).catch(()=>{});
+
+loadDashboard();
+</script>
+<!-- ── CONFIRM MODAL ── -->
+<div class="confirm-overlay" id="confirmOverlay">
+  <div class="confirm-modal">
+    <span class="confirm-icon" id="confirmIcon">⚠️</span>
+    <div class="confirm-title" id="confirmTitle">Are you sure?</div>
+    <div class="confirm-desc" id="confirmDesc"></div>
+    <input class="confirm-input" id="confirmInput" placeholder="" oninput="onConfirmType()"/>
+    <div class="confirm-btns">
+      <button class="btn btn-ghost" onclick="closeConfirmModal()">Cancel</button>
+      <button class="btn btn-warn" id="confirmOkBtn" disabled onclick="onConfirmOk()">Delete</button>
+    </div>
+  </div>
+</div>
+
+</body>
+</html>

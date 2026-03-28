@@ -1,0 +1,546 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>ExamAlloc — Manage Users</title>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Space+Mono:wght@400;700&family=DM+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet"/>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+:root{
+  --bg:#080910;--surface:#0d0f1a;--card:#111420;--card2:#151828;
+  --border:#1a1e2e;--border2:#222640;
+  --red:#e8341c;--red-glow:rgba(232,52,28,0.3);--red-soft:rgba(232,52,28,0.1);
+  --teal:#0fb981;--teal-soft:rgba(15,185,129,0.1);
+  --blue:#2563eb;--blue-soft:rgba(37,99,235,0.1);
+  --warn:#f59e0b;--warn-soft:rgba(245,158,11,0.1);
+  --text:#eef0ff;--muted:#555a78;--muted2:#7a82a8;
+  --mono:'Space Mono',monospace;--bebas:'Bebas Neue',cursive;--sans:'DM Sans',sans-serif;
+  --sidebar:220px;--radius:10px;
+}
+html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--sans);font-size:14px;overflow:hidden;}
+::-webkit-scrollbar{width:5px;}::-webkit-scrollbar-track{background:var(--bg);}::-webkit-scrollbar-thumb{background:var(--border2);border-radius:3px;}
+.app{display:flex;height:100vh;overflow:hidden;}
+
+/* SIDEBAR */
+.sidebar{width:var(--sidebar);min-width:var(--sidebar);background:var(--surface);border-right:1px solid var(--border);display:flex;flex-direction:column;z-index:10;}
+.sidebar-logo{padding:20px 18px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px;}
+.logo-icon{width:32px;height:32px;border-radius:8px;background:var(--red);display:flex;align-items:center;justify-content:center;flex-shrink:0;box-shadow:0 0 12px var(--red-glow);}
+.logo-icon svg{width:16px;height:16px;color:#fff;}
+.logo-text .t1{font-family:var(--bebas);font-size:16px;letter-spacing:2px;color:var(--text);line-height:1;}
+.logo-text .t2{font-family:var(--mono);font-size:8px;letter-spacing:0.12em;color:var(--muted);text-transform:uppercase;margin-top:2px;}
+.nav{flex:1;padding:12px 0;overflow-y:auto;}
+.nav-section{padding:14px 18px 6px;font-family:var(--mono);font-size:9px;letter-spacing:0.18em;color:var(--muted);text-transform:uppercase;}
+.nav-item{display:flex;align-items:center;gap:10px;padding:9px 18px;cursor:pointer;color:var(--muted2);font-size:13px;font-weight:500;border-left:2px solid transparent;transition:all 0.18s;text-decoration:none;}
+.nav-item:hover{color:var(--text);background:rgba(255,255,255,0.025);}
+.nav-item.active{color:var(--red);border-left-color:var(--red);background:var(--red-soft);}
+.nav-item .ni{font-size:15px;width:20px;text-align:center;flex-shrink:0;}
+.sidebar-footer{padding:14px 18px;border-top:1px solid var(--border);}
+.user-chip{display:flex;align-items:center;gap:10px;padding:10px 12px;background:var(--card);border:1px solid var(--border2);border-radius:8px;}
+.user-avatar{width:30px;height:30px;border-radius:50%;background:linear-gradient(135deg,var(--red),var(--blue));display:flex;align-items:center;justify-content:center;font-family:var(--mono);font-size:11px;font-weight:700;color:#fff;flex-shrink:0;}
+.user-info .un{font-size:12px;font-weight:600;color:var(--text);}
+.user-info .ur{font-family:var(--mono);font-size:9px;color:var(--muted);text-transform:uppercase;letter-spacing:0.08em;}
+.logout-btn{margin-left:auto;background:none;border:none;cursor:pointer;color:var(--muted);transition:color 0.2s;padding:2px;}
+.logout-btn:hover{color:var(--red);}
+.logout-btn svg{width:14px;height:14px;display:block;}
+
+/* MAIN */
+.main{flex:1;display:flex;flex-direction:column;overflow:hidden;}
+.topbar{height:54px;background:var(--surface);border-bottom:1px solid var(--border);display:flex;align-items:center;padding:0 24px;gap:12px;flex-shrink:0;}
+.topbar-title{font-family:var(--mono);font-size:11px;color:var(--muted);}
+.topbar-title span{color:var(--text);}
+.topbar-right{margin-left:auto;display:flex;align-items:center;gap:10px;}
+.status-pill{display:flex;align-items:center;gap:6px;font-family:var(--mono);font-size:10px;color:var(--teal);background:var(--teal-soft);border:1px solid rgba(15,185,129,0.2);padding:4px 12px;border-radius:100px;}
+.status-dot{width:6px;height:6px;border-radius:50%;background:var(--teal);animation:blink 1.4s infinite;}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:0.2}}
+.content{flex:1;overflow-y:auto;padding:24px;}
+
+/* PAGE HEADER */
+.page-header{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:24px;gap:12px;flex-wrap:wrap;}
+.ph-tag{font-family:var(--mono);font-size:10px;letter-spacing:0.16em;text-transform:uppercase;color:var(--muted);margin-bottom:4px;}
+.page-header h2{font-family:var(--bebas);font-size:32px;letter-spacing:1px;color:var(--text);line-height:1;}
+
+/* STATS */
+.stat-row{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:24px;}
+.stat-mini{background:var(--card);border:1px solid var(--border2);border-radius:var(--radius);padding:16px 18px;position:relative;overflow:hidden;}
+.stat-mini::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;}
+.stat-mini.red::before{background:var(--red);}
+.stat-mini.teal::before{background:var(--teal);}
+.stat-mini.blue::before{background:var(--blue);}
+.stat-mini .sl{font-family:var(--mono);font-size:9px;letter-spacing:0.12em;text-transform:uppercase;color:var(--muted);margin-bottom:6px;}
+.stat-mini .sv{font-family:var(--bebas);font-size:30px;letter-spacing:1px;color:var(--text);line-height:1;}
+
+/* TWO COLUMN */
+.two-col{display:grid;grid-template-columns:1fr 1fr;gap:20px;}
+
+/* CARDS */
+.card{background:var(--card);border:1px solid var(--border2);border-radius:var(--radius);margin-bottom:18px;}
+.card-header{display:flex;align-items:center;justify-content:space-between;padding:16px 20px;border-bottom:1px solid var(--border);}
+.card-title{font-family:var(--mono);font-size:11px;letter-spacing:0.1em;text-transform:uppercase;color:var(--muted2);display:flex;align-items:center;gap:8px;}
+.card-title::before{content:'';display:inline-block;width:3px;height:13px;background:var(--red);border-radius:2px;}
+.card-body{padding:20px;}
+
+/* BUTTONS */
+.btn{display:inline-flex;align-items:center;gap:6px;padding:8px 16px;border-radius:7px;border:none;cursor:pointer;font-size:13px;font-family:var(--sans);font-weight:600;transition:all 0.18s;}
+.btn svg{width:14px;height:14px;flex-shrink:0;}
+.btn-red{background:var(--red);color:#fff;box-shadow:0 0 16px var(--red-glow);}
+.btn-red:hover{filter:brightness(1.1);transform:translateY(-1px);}
+.btn:disabled{opacity:0.4;cursor:not-allowed;transform:none!important;filter:none!important;}
+
+/* ROLE TABS */
+.role-tabs{display:flex;gap:8px;margin-bottom:20px;}
+.role-tab{flex:1;padding:10px 12px;border-radius:8px;border:1.5px solid var(--border2);background:var(--card2);cursor:pointer;text-align:center;transition:all 0.18s;}
+.role-tab:hover{border-color:var(--muted2);}
+.role-tab .rt-icon{font-size:18px;display:block;margin-bottom:4px;}
+.role-tab .rt-label{font-size:12px;font-weight:600;}
+.role-tab .rt-desc{font-size:10px;color:var(--muted2);margin-top:2px;}
+
+/* FORMS */
+.form-grid{display:grid;gap:14px;}
+.field{display:flex;flex-direction:column;gap:6px;}
+.field label{font-family:var(--mono);font-size:10px;letter-spacing:0.12em;text-transform:uppercase;color:var(--muted);}
+.field input{background:var(--surface);border:1.5px solid var(--border2);border-radius:7px;padding:10px 14px;font-family:var(--sans);font-size:13px;color:var(--text);outline:none;transition:border-color 0.2s,box-shadow 0.2s;width:100%;}
+.field input::placeholder{color:var(--muted);}
+.field input:focus{border-color:var(--red);box-shadow:0 0 0 3px var(--red-soft);}
+.pw-wrap{position:relative;}
+.pw-wrap input{padding-right:44px;}
+.pw-toggle{position:absolute;right:12px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;color:var(--muted);padding:4px;transition:color 0.2s;}
+.pw-toggle:hover{color:var(--text);}
+.pw-toggle svg{width:15px;height:15px;display:block;}
+.pw-strength{margin-top:6px;display:flex;gap:4px;align-items:center;}
+.pw-bar{flex:1;height:3px;border-radius:2px;background:var(--border2);transition:background 0.3s;}
+.pw-label{font-family:var(--mono);font-size:9px;color:var(--muted);margin-left:4px;min-width:50px;}
+.divider{height:1px;background:var(--border);margin:18px 0;}
+
+/* TABLE */
+.tbl-wrap{overflow-x:auto;max-height:400px;overflow-y:auto;}
+table{width:100%;border-collapse:collapse;}
+th{font-family:var(--mono);font-size:10px;letter-spacing:0.1em;text-transform:uppercase;color:var(--muted);padding:10px 14px;text-align:left;border-bottom:1px solid var(--border);white-space:nowrap;position:sticky;top:0;background:var(--card);}
+td{padding:11px 14px;border-bottom:1px solid var(--border);font-size:13px;color:var(--text);}
+tr:last-child td{border-bottom:none;}
+tr:hover td{background:rgba(255,255,255,0.015);}
+.td-mono{font-family:var(--mono);font-size:11px;}
+.badge{display:inline-flex;align-items:center;gap:4px;padding:3px 10px;border-radius:100px;font-family:var(--mono);font-size:10px;font-weight:700;}
+.badge-teal{background:var(--teal-soft);color:var(--teal);border:1px solid rgba(15,185,129,0.2);}
+.badge-blue{background:var(--blue-soft);color:var(--blue);border:1px solid rgba(37,99,235,0.2);}
+.btn-del{background:none;border:1px solid transparent;border-radius:6px;padding:5px 8px;cursor:pointer;color:var(--muted);transition:all 0.18s;}
+.btn-del:hover{color:var(--red);border-color:rgba(232,52,28,0.3);background:var(--red-soft);}
+.btn-del svg{width:13px;height:13px;display:block;}
+
+/* FILTER */
+.filter-bar{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:14px;}
+.filter-bar input{background:var(--surface);border:1.5px solid var(--border2);border-radius:7px;padding:8px 14px;font-family:var(--sans);font-size:13px;color:var(--text);outline:none;transition:border-color 0.2s;flex:1;min-width:140px;}
+.filter-bar input::placeholder{color:var(--muted);}
+.filter-bar input:focus{border-color:var(--red);}
+.ftabs{display:flex;gap:4px;}
+.ftab{padding:6px 12px;border-radius:6px;border:1px solid var(--border2);background:none;cursor:pointer;font-family:var(--mono);font-size:10px;color:var(--muted2);letter-spacing:0.06em;transition:all 0.18s;}
+.ftab:hover{color:var(--text);}
+.ftab.fa{background:var(--red-soft);border-color:var(--red);color:var(--red);}
+.ftab.ft{background:var(--teal-soft);border-color:rgba(15,185,129,0.4);color:var(--teal);}
+.ftab.fb{background:var(--blue-soft);border-color:rgba(37,99,235,0.4);color:var(--blue);}
+
+/* EMPTY STATE */
+.empty-state{text-align:center;padding:40px 20px;}
+.empty-icon{font-size:32px;margin-bottom:10px;opacity:0.4;}
+.empty-text{font-family:var(--mono);font-size:11px;color:var(--muted);}
+
+/* TOAST */
+.toast{position:fixed;bottom:28px;right:28px;z-index:999;background:var(--card);border:1px solid var(--border2);border-radius:10px;padding:14px 18px;display:flex;align-items:center;gap:12px;min-width:280px;box-shadow:0 8px 32px rgba(0,0,0,0.4);transform:translateY(80px);opacity:0;transition:all 0.3s cubic-bezier(0.34,1.56,0.64,1);pointer-events:none;}
+.toast.show{transform:translateY(0);opacity:1;pointer-events:auto;}
+.toast-icon{font-size:18px;flex-shrink:0;}
+.tb-title{font-size:13px;font-weight:600;color:var(--text);}
+.tb-sub{font-size:11px;color:var(--muted2);margin-top:2px;}
+.toast.success{border-color:rgba(15,185,129,0.3);}
+.toast.error{border-color:rgba(232,52,28,0.3);}
+
+/* COUNT BADGE */
+.count-badge{font-family:var(--mono);font-size:10px;color:var(--muted);}
+
+/* SPINNER */
+.spinner-wrap{text-align:center;padding:30px;font-family:var(--mono);font-size:11px;color:var(--muted);}
+.spin{display:inline-block;width:18px;height:18px;border:2px solid var(--border2);border-top-color:var(--red);border-radius:50%;animation:spin 0.7s linear infinite;vertical-align:middle;margin-right:8px;}
+@keyframes spin{to{transform:rotate(360deg)}}
+@keyframes fadeIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+.anim{animation:fadeIn 0.25s ease both;}
+</style>
+</head>
+<body>
+<div class="app">
+
+  <!-- SIDEBAR -->
+  <aside class="sidebar">
+    <div class="sidebar-logo">
+      <div class="logo-icon">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+          <rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 21V9"/>
+        </svg>
+      </div>
+      <div class="logo-text">
+        <div class="t1">ExamAlloc</div>
+        <div class="t2">Admin Panel</div>
+      </div>
+    </div>
+    <nav class="nav">
+      <div class="nav-section">Main</div>
+      <a class="nav-item" href="admin_dashboard.html"><span class="ni">📊</span> Dashboard</a>
+      <a class="nav-item" href="admin_dashboard.html"><span class="ni">🏛️</span> Hall Management</a>
+      <a class="nav-item" href="admin_dashboard.html"><span class="ni">📅</span> Schedules</a>
+      <a class="nav-item" href="admin_dashboard.html"><span class="ni">🎯</span> Allocations</a>
+      <div class="nav-section">Administration</div>
+      <a class="nav-item active" href="manage_users.html"><span class="ni">👥</span> Manage Users</a>
+      <a class="nav-item" href="admin_dashboard.html"><span class="ni">📋</span> Reports</a>
+      <a class="nav-item" href="admin_dashboard.html"><span class="ni">⚙️</span> Settings</a>
+    </nav>
+    <div class="sidebar-footer">
+      <div class="user-chip">
+        <div class="user-avatar" id="avatarInitial">A</div>
+        <div class="user-info">
+          <div class="un" id="sidebarUser">admin</div>
+          <div class="ur" id="sidebarRole">Administrator</div>
+        </div>
+        <button class="logout-btn" onclick="logout()" title="Logout">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/>
+          </svg>
+        </button>
+      </div>
+    </div>
+  </aside>
+
+  <!-- MAIN -->
+  <div class="main">
+    <div class="topbar">
+      <div class="topbar-title">Admin / <span>Manage Users</span></div>
+      <div class="topbar-right">
+        <div class="status-pill"><div class="status-dot"></div>SYSTEM ONLINE</div>
+      </div>
+    </div>
+
+    <div class="content">
+      <div class="anim">
+
+        <div class="page-header">
+          <div>
+            <div class="ph-tag">Administration</div>
+            <h2>User Management</h2>
+          </div>
+        </div>
+
+        <!-- Stats -->
+        <div class="stat-row">
+          <div class="stat-mini red"><div class="sl">Total Users</div><div class="sv" id="statTotal">—</div></div>
+          <div class="stat-mini" style="border-top:2px solid var(--red)"><div class="sl">Administrators</div><div class="sv" id="statAdmin">—</div></div>
+        </div>
+
+        <div class="two-col">
+
+          <!-- CREATE USER FORM -->
+          <div class="card">
+            <div class="card-header">
+              <div class="card-title">Create New User</div>
+            </div>
+            <div class="card-body">
+              <!-- Role selection (Administrator only) -->
+              <div class="role-tabs" style="display:none"></div>
+
+              <div class="form-grid">
+                <div class="field">
+                  <label>Username</label>
+                  <input type="text" id="newUsername" placeholder="Username" autocomplete="off"/>
+                </div>
+                <div class="field">
+                  <label>Password</label>
+                  <div class="pw-wrap">
+                    <input type="password" id="newPassword" placeholder="Min. 6 characters" autocomplete="new-password" oninput="checkStrength()"/>
+                    <button class="pw-toggle" type="button" onclick="togglePw('newPassword','eyeA')">
+                      <svg id="eyeA" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/>
+                      </svg>
+                    </button>
+                  </div>
+                  <div class="pw-strength">
+                    <div class="pw-bar" id="bar1"></div>
+                    <div class="pw-bar" id="bar2"></div>
+                    <div class="pw-bar" id="bar3"></div>
+                    <div class="pw-bar" id="bar4"></div>
+                    <span class="pw-label" id="strengthLabel"></span>
+                  </div>
+                </div>
+                <div class="field">
+                  <label>Confirm Password</label>
+                  <div class="pw-wrap">
+                    <input type="password" id="confirmPassword" placeholder="Re-enter password" autocomplete="new-password"/>
+                    <button class="pw-toggle" type="button" onclick="togglePw('confirmPassword','eyeB')">
+                      <svg id="eyeB" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/>
+                      </svg>
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              <div class="divider"></div>
+
+              <button class="btn btn-red" id="createBtn" style="width:100%;justify-content:center;" onclick="createUser()">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><line x1="19" y1="8" x2="19" y2="14"/><line x1="22" y1="11" x2="16" y2="11"/>
+                </svg>
+                <span id="createBtnLabel">Create Administrator</span>
+              </button>
+            </div>
+          </div>
+
+          <!-- USER LIST -->
+          <div class="card" style="display:flex;flex-direction:column;">
+            <div class="card-header">
+              <div class="card-title">All Users</div>
+              <span class="count-badge" id="userCount">Loading…</span>
+            </div>
+            <div class="card-body" style="flex:1;">
+              <div class="filter-bar">
+                <input type="text" id="searchInput" placeholder="Search users…" oninput="renderTable()"/>
+                <div class="ftabs">
+                  <button class="ftab fa" id="ftAll"   onclick="setFilter('all')">All</button>
+                  <button class="ftab"    id="ftAdmin" onclick="setFilter('administrator')">Admin</button>
+                </div>
+              </div>
+              <div class="tbl-wrap">
+                <table>
+                  <thead>
+                    <tr>
+                      <th>Username</th>
+                      <th>Role</th>
+                      <th>Created</th>
+                      <th></th>
+                    </tr>
+                  </thead>
+                  <tbody id="userTableBody"></tbody>
+                </table>
+                <div class="empty-state" id="emptyState" style="display:none;">
+                  <div class="empty-icon">👤</div>
+                  <div class="empty-text">No users found</div>
+                </div>
+                <div class="spinner-wrap" id="loadingState">
+                  <span class="spin"></span> Loading users…
+                </div>
+              </div>
+            </div>
+          </div>
+
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Toast -->
+<div class="toast" id="toast">
+  <div class="toast-icon" id="toastIcon"></div>
+  <div><div class="tb-title" id="toastTitle"></div><div class="tb-sub" id="toastSub"></div></div>
+</div>
+
+<script>
+const API = '';
+let allUsers  = [];
+let token = '';
+let formRole  = 'administrator';
+let filterRole = 'all';
+
+// ── INIT ────────────────────────────────────────────────────────────────────
+window.onload = function() {
+  // FIX #12: Was defaulting to admin role — now properly redirects if not authenticated
+  const user  = sessionStorage.getItem('ehas_user');
+  const role  = sessionStorage.getItem('ehas_role');
+  token = sessionStorage.getItem('ehas_token') || '';
+  if (!user || !role || !token || role !== 'administrator') {
+    window.location.href = 'login.html';
+  }
+  document.getElementById('sidebarUser').textContent = user;
+  document.getElementById('sidebarRole').textContent = role === 'administrator' ? 'Administrator' : role;
+  document.getElementById('avatarInitial').textContent = user[0].toUpperCase();
+  loadUsers();
+};
+
+// ── LOAD USERS FROM API ──────────────────────────────────────────────────────
+async function loadUsers() {
+  try {
+    const res  = await fetch(`${API}/api/users`, { headers: { 'Authorization': 'Bearer ' + token } });
+    const json = await res.json();
+    if (!json.success) throw new Error(json.message);
+    allUsers = json.data || [];
+    document.getElementById('loadingState').style.display = 'none';
+    renderTable();
+    updateStats();
+  } catch (err) {
+    document.getElementById('loadingState').innerHTML =
+      `<span style="color:var(--red)">⚠ Could not reach server: ${err.message}</span>`;
+  }
+}
+
+// ── ROLE TAB ─────────────────────────────────────────────────────────────────
+function setRole(role) {
+  formRole = role;
+  document.getElementById('createBtnLabel').textContent = 'Create Administrator';
+}
+
+// ── PASSWORD TOGGLE ───────────────────────────────────────────────────────────
+function togglePw(inputId, iconId) {
+  const input = document.getElementById(inputId);
+  const icon  = document.getElementById(iconId);
+  if (input.type === 'password') {
+    input.type = 'text';
+    icon.innerHTML = `<path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/>`;
+  } else {
+    input.type = 'password';
+    icon.innerHTML = `<path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/>`;
+  }
+}
+
+// ── PASSWORD STRENGTH ─────────────────────────────────────────────────────────
+function checkStrength() {
+  const pw = document.getElementById('newPassword').value;
+  const bars  = ['bar1','bar2','bar3','bar4'].map(id => document.getElementById(id));
+  const label = document.getElementById('strengthLabel');
+  let score = 0;
+  if (pw.length >= 6)  score++;
+  if (pw.length >= 10) score++;
+  if (/[A-Z]/.test(pw) && /[0-9]/.test(pw)) score++;
+  if (/[^A-Za-z0-9]/.test(pw)) score++;
+  const colors = ['#e8341c','#f59e0b','#0fb981','#2563eb'];
+  const labels = ['Weak','Fair','Strong','Very Strong'];
+  bars.forEach((b, i) => { b.style.background = i < score ? colors[score-1] : 'var(--border2)'; });
+  label.textContent = pw.length === 0 ? '' : (labels[score-1] || '');
+}
+
+// ── CREATE USER ───────────────────────────────────────────────────────────────
+async function createUser() {
+  const username = document.getElementById('newUsername').value.trim();
+  const password = document.getElementById('newPassword').value;
+  const confirm  = document.getElementById('confirmPassword').value;
+  const btn      = document.getElementById('createBtn');
+
+  if (!username) { showToast('error','Missing Field','Please enter a username.'); return; }
+  if (username.length < 3) { showToast('error','Invalid Username','At least 3 characters required.'); return; }
+  if (/\s/.test(username)) { showToast('error','Invalid Username','No spaces allowed in username.'); return; }
+  if (!password) { showToast('error','Missing Field','Please enter a password.'); return; }
+  if (password.length < 6) { showToast('error','Weak Password','Password must be at least 6 characters.'); return; }
+  if (password !== confirm) { showToast('error','Mismatch','Passwords do not match.'); return; }
+
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spin"></span> Creating…';
+
+  try {
+    const res  = await fetch(`${API}/api/users`, {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body:    JSON.stringify({ username, password, role: formRole }),
+    });
+    const json = await res.json();
+    if (!json.success) throw new Error(json.message);
+
+    // Reset form
+    document.getElementById('newUsername').value = '';
+    document.getElementById('newPassword').value = '';
+    document.getElementById('confirmPassword').value = '';
+    checkStrength();
+
+    showToast('success', 'User Created!', `${username} added as ${formRole}.`);
+    await loadUsers();
+
+  } catch (err) {
+    showToast('error', 'Failed', err.message);
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="width:14px;height:14px"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><line x1="19" y1="8" x2="19" y2="14"/><line x1="22" y1="11" x2="16" y2="11"/></svg><span id="createBtnLabel">Create Administrator</span>`;
+  }
+}
+
+// ── DELETE USER ───────────────────────────────────────────────────────────────
+async function deleteUser(id, name) {
+  if (!confirm(`Delete user "${name}"?\nThis cannot be undone.`)) return;
+  try {
+    const res  = await fetch(`${API}/api/users/${id}`, { method: 'DELETE', headers: { 'Authorization': 'Bearer ' + token } });
+    const json = await res.json();
+    if (!json.success) throw new Error(json.message);
+    showToast('success', 'Deleted', `${name} has been removed.`);
+    await loadUsers();
+  } catch (err) {
+    showToast('error', 'Failed', err.message);
+  }
+}
+
+// ── FILTER ────────────────────────────────────────────────────────────────────
+function setFilter(role) {
+  filterRole = role;
+  document.getElementById('ftAll').className   = 'ftab' + (role === 'all'           ? ' fa' : '');
+  document.getElementById('ftAdmin').className = 'ftab' + (role === 'administrator' ? ' fa' : '');
+  renderTable();
+}
+
+// ── RENDER TABLE ──────────────────────────────────────────────────────────────
+function renderTable() {
+  const search = document.getElementById('searchInput').value.toLowerCase();
+  const filtered = allUsers.filter(u => {
+    const matchRole   = filterRole === 'all' || u.role === filterRole;
+    const matchSearch = !search ||
+      u.username.toLowerCase().includes(search);
+    return matchRole && matchSearch;
+  });
+
+  const tbody = document.getElementById('userTableBody');
+  const empty = document.getElementById('emptyState');
+  document.getElementById('userCount').textContent = `${filtered.length} user${filtered.length !== 1 ? 's' : ''}`;
+
+  if (filtered.length === 0) {
+    tbody.innerHTML = '';
+    empty.style.display = 'block';
+    return;
+  }
+  empty.style.display = 'none';
+
+  tbody.innerHTML = filtered.map(u => {
+    const roleBadge = `<span class="badge" style="background:rgba(232,52,28,0.12);color:var(--red);border:1px solid rgba(232,52,28,0.2)">🔑 Administrator</span>`;
+    const date = u.created_at
+      ? new Date(u.created_at).toLocaleDateString('en-IN', {day:'2-digit',month:'short',year:'numeric'})
+      : '—';
+    return `<tr>
+      <td class="td-mono" style="font-weight:600">${esc(u.username)}</td>
+      <td>${roleBadge}</td>
+      <td class="td-mono" style="color:var(--muted2);font-size:11px">${date}</td>
+      <td>
+        <button class="btn-del" onclick="deleteUser(${u.id},'${esc(u.username)}')" title="Delete">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/>
+          </svg>
+        </button>
+      </td>
+    </tr>`;
+  }).join('');
+}
+
+// ── UPDATE STATS ──────────────────────────────────────────────────────────────
+function updateStats() {
+  document.getElementById('statTotal').textContent = allUsers.length;
+  document.getElementById('statAdmin').textContent = allUsers.filter(u => u.role === 'administrator').length;
+}
+
+// ── TOAST ─────────────────────────────────────────────────────────────────────
+let toastTimer;
+function showToast(type, title, sub) {
+  const t = document.getElementById('toast');
+  document.getElementById('toastTitle').textContent = title;
+  document.getElementById('toastSub').textContent   = sub;
+  document.getElementById('toastIcon').textContent  = type === 'success' ? '✅' : '❌';
+  t.className = `toast ${type} show`;
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => { t.className = `toast ${type}`; }, 3500);
+}
+
+function esc(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+
+function logout() { sessionStorage.clear(); window.location.href = 'login.html'; }
+
+document.addEventListener('keydown', e => { if (e.key === 'Enter') createUser(); });
+</script>
+</body>
+</html>
