@@ -116,6 +116,7 @@ const PORT = process.env.PORT || 3000;
 const ALLOWED_ORIGINS = [
   'http://localhost:3000',
   'http://127.0.0.1:3000',
+  'https://ehaspart-1.onrender.com',
   'https://exam-hall-allocation-system.onrender.com',
   process.env.FRONTEND_ORIGIN,
 ].filter(Boolean);
