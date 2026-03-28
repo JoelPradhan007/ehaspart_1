@@ -9,7 +9,7 @@ const SALT_ROUNDS = 12;
 const pool = mysql.createPool({
   host:             process.env.DB_HOST || "localhost",
   user:             process.env.DB_USER || "root",
-  password:         process.env.DB_PASS || "joel", // FotSwCvGOzVoncQaCHLHJmXyTSXmZDJi
+  password:         process.env.DB_PASS || "zqaTUrpKdxxngCMMYjThfPRuTIDGAUTC", // FotSwCvGOzVoncQaCHLHJmXyTSXmZDJi
   database:         process.env.DB_NAME || "exam_seating1",
   port:             process.env.DB_PORT || 3306,
   waitForConnections: true,
