@@ -2,17 +2,18 @@
 // allocate_v11.js — Exam Seating Algorithm v11
 // ============================================================
 //
-// CHANGES OVER v10:
+// SEATING PATTERN (6 cols × 8 rows, 6 depts):
 //
-//  OVERFLOW FILL (new):
-//    After the main stripe allocation, if students remain
-//    (overflow beyond capacity or dept exhausted its slots),
-//    they are placed in any empty seat in the hall — even if
-//    adjacent to the same dept. This ensures ALL students are
-//    seated when total students <= total capacity.
+//  Group 0 → C1+C4 : D0 odd rows,  D1 even rows
+//  Group 1 → C2+C5 : D2 odd rows,  D3 even rows
+//  Group 2 → C3+C6 : D4 odd rows,  D5 even rows
 //
-//    Overflow seats are filled row-by-row, left-to-right,
-//    skipping already-occupied seats.
+// OVERFLOW RULE:
+//  After all halls are filled with the stripe pattern,
+//  any students remaining (overflow beyond their stripe slots)
+//  are placed in empty seats of the last hall in roll-number
+//  order, row-by-row left-to-right. Adjacency constraint is
+//  RELAXED for overflow seats only.
 //
 // ============================================================
 
@@ -27,7 +28,7 @@ function runAllocationAlgorithm(groupedStudents, halls, deptOrder = null) {
     ? [...deptOrder].filter(d => groupedStudents[d])
     : Object.keys(groupedStudents).sort();
 
-  // ── Step 2: Sort each dept's students by student_id ──
+  // ── Step 2: Build sorted queues per dept ──
   const queues = {};
   for (const dept of allDepts) {
     queues[dept] = [...(groupedStudents[dept] || [])].sort((a, b) => {
@@ -39,42 +40,41 @@ function runAllocationAlgorithm(groupedStudents, halls, deptOrder = null) {
     });
   }
 
-  // ── Step 3: Per-hall quota — fill each slot to capacity ──
   const N = halls.length;
-  const quotas = halls.map(() => ({}));
 
+  // ── Step 3: Calculate stripe quota per dept per hall ──
+  // Each dept has exactly one stripe slot per hall = total_rows seats.
+  // Greedily fill: give dept min(remaining, total_rows) per hall.
+  const stripeQuota = halls.map(() => ({}));
   for (const dept of allDepts) {
     let remaining = queues[dept].length;
     for (let i = 0; i < N; i++) {
-      if (remaining === 0) {
-        quotas[i][dept] = 0;
-      } else if (i < N - 1) {
-        const hall = halls[i];
-        const numGroups = Math.floor(hall.total_cols / 2);
-        const deptIdx = allDepts.indexOf(dept);
-        const slotCapacity = deptIdx < numGroups * 2 ? hall.total_rows : 0;
-        const quota = Math.min(remaining, slotCapacity);
-        quotas[i][dept] = quota;
-        remaining -= quota;
-      } else {
-        quotas[i][dept] = remaining;
-        remaining = 0;
-      }
+      if (remaining === 0) { stripeQuota[i][dept] = 0; continue; }
+      const hall     = halls[i];
+      const numGroups = Math.floor(hall.total_cols / 2);
+      const deptIdx  = allDepts.indexOf(dept);
+      const hasSlot  = deptIdx < numGroups * 2;
+      const slotCap  = hasSlot ? hall.total_rows : 0;
+      const quota    = Math.min(remaining, slotCap);
+      stripeQuota[i][dept] = quota;
+      remaining -= quota;
     }
+    // Note: if remaining > 0 after all halls, those are overflow students
+    // They stay in the queue and will be placed after last hall stripe
   }
 
-  // ── Step 4: Seat each hall ──
-  for (let hi = 0; hi < halls.length; hi++) {
-    const hall = halls[hi];
-    const hallQuota = quotas[hi];
+  // ── Step 4: Seat each hall with stripe pattern ──
+  for (let hi = 0; hi < N; hi++) {
+    const hall  = halls[hi];
+    const quota = stripeQuota[hi];
 
     for (const dept of allDepts) {
-      if (hallQuota[dept] > 0 && hallAssignments[dept] === undefined) {
+      if (quota[dept] > 0 && hallAssignments[dept] === undefined) {
         hallAssignments[dept] = hall.hall_id;
       }
     }
 
-    const result = seatHall(hall, allDepts, queues, hallQuota);
+    const result = seatHall(hall, allDepts, queues, quota);
     allocations.push(...result.allocations);
 
     const deptCounts = {};
@@ -82,26 +82,81 @@ function runAllocationAlgorithm(groupedStudents, halls, deptOrder = null) {
       deptCounts[a.subject_code] = (deptCounts[a.subject_code] || 0) + 1;
     }
     summary.push({
-      hall_id:    hall.hall_id,
-      hall_name:  hall.hall_name,
-      total:      result.allocations.length,
+      hall_id:     hall.hall_id,
+      hall_name:   hall.hall_name,
+      total:       result.allocations.length,
       dept_counts: deptCounts,
-      violations: result.violations,
+      violations:  result.violations,
     });
   }
 
-  // ── Step 5: Truly unallocated (exceeded total capacity) ──
+  // ── Step 5: Place overflow students in empty seats of last hall ──
+  // Collect all remaining students across all depts in roll-number order
+  const overflowAll = [];
   for (const dept of allDepts) {
-    for (const s of queues[dept]) {
-      unallocated.push({
-        student_id:   s.student_id,
-        student_name: s.student_name || '',
-        dept_code:    dept,
-        subject_code: s.subject_code || dept,
-        reason:       'No remaining hall capacity',
-      });
+    while (queues[dept].length > 0) {
+      overflowAll.push({ student: queues[dept].shift(), subject_code: dept });
     }
-    queues[dept] = [];
+  }
+  // Sort by student_id for consistent roll-number order
+  overflowAll.sort((a, b) =>
+    String(a.student.student_id).localeCompare(
+      String(b.student.student_id), undefined, { numeric: true }
+    )
+  );
+
+  if (overflowAll.length > 0) {
+    const lastHallId = halls[N - 1].hall_id;
+    const lastHall   = halls[N - 1];
+
+    // Find which seats in last hall are already occupied
+    const occupiedInLast = new Set(
+      allocations
+        .filter(a => a.hall_id === lastHallId)
+        .map(a => `${a.seat_row},${a.seat_col}`)
+    );
+
+    // Get empty seats in last hall, row-by-row
+    const emptySeats = [];
+    for (let row = 1; row <= lastHall.total_rows; row++) {
+      for (let col = 1; col <= lastHall.total_cols; col++) {
+        if (!occupiedInLast.has(`${row},${col}`)) {
+          emptySeats.push([row, col]);
+        }
+      }
+    }
+
+    // Place overflow students into empty seats in order
+    for (let i = 0; i < overflowAll.length; i++) {
+      if (i >= emptySeats.length) {
+        // Truly exceeds capacity
+        const { student, subject_code } = overflowAll[i];
+        unallocated.push({
+          student_id:   student.student_id,
+          student_name: student.student_name || '',
+          dept_code:    subject_code,
+          subject_code: student.subject_code || subject_code,
+          reason:       'No remaining hall capacity',
+        });
+        continue;
+      }
+      const [row, col] = emptySeats[i];
+      const { student, subject_code } = overflowAll[i];
+      allocations.push({
+        student_id:   student.student_id,
+        student_name: student.student_name || '',
+        dept_code:    subject_code,
+        subject_code: student.subject_code || subject_code,
+        hall_id:      lastHallId,
+        seat_row:     row,
+        seat_col:     col,
+        seat_label:   `R${row}C${col}`,
+      });
+      // Update last hall summary
+      const lastSummary = summary[N - 1];
+      lastSummary.total++;
+      lastSummary.dept_counts[subject_code] = (lastSummary.dept_counts[subject_code] || 0) + 1;
+    }
   }
 
   const totalViolations = summary.reduce((sum, h) => sum + h.violations, 0);
@@ -110,7 +165,6 @@ function runAllocationAlgorithm(groupedStudents, halls, deptOrder = null) {
 
 
 function seatHall(hall, allDepts, queues, hallQuota) {
-  const allocations = [];
   const R = hall.total_rows;
   const C = hall.total_cols;
   const numGroups = Math.floor(C / 2);
@@ -120,7 +174,7 @@ function seatHall(hall, allDepts, queues, hallQuota) {
   for (let gi = 0; gi < numGroups; gi++) {
     for (let parity = 0; parity < 2; parity++) {
       const deptIdx = gi * 2 + parity;
-      const seats = [];
+      const seats   = [];
       for (const col of [gi + 1, gi + 1 + numGroups]) {
         for (let row = 1 + parity; row <= R; row += 2) {
           seats.push([row, col]);
@@ -130,17 +184,14 @@ function seatHall(hall, allDepts, queues, hallQuota) {
     }
   }
 
-  // ── Phase 1: Stripe allocation (no adjacent same-dept) ──
-  const seatMap = {}; // "row,col" → { student, subject_code }
-
+  // ── Stripe allocation ──
+  const seatMap = {};
   for (let deptIdx = 0; deptIdx < allDepts.length && deptIdx < numGroups * 2; deptIdx++) {
-    const dept = allDepts[deptIdx];
+    const dept    = allDepts[deptIdx];
     if (!dept || !queues[dept]) continue;
-
     const allowed = hallQuota[dept] || 0;
     const seats   = seatLists[deptIdx] || [];
-    let placed = 0;
-
+    let placed    = 0;
     for (const [row, col] of seats) {
       if (placed >= allowed) break;
       if (queues[dept].length === 0) break;
@@ -150,36 +201,8 @@ function seatHall(hall, allDepts, queues, hallQuota) {
     }
   }
 
-  // ── Phase 2: Overflow fill ──
-  // Any dept that still has students (due to slot exhaustion or last-hall overflow)
-  // gets placed in remaining empty seats, row by row, regardless of adjacency.
-  // This ensures all students within capacity are seated.
-  const overflowQueue = [];
-  for (const dept of allDepts) {
-    const stillNeeded = hallQuota[dept] || 0;
-    // Count how many were already placed for this dept in phase 1
-    const alreadyPlaced = Object.values(seatMap)
-      .filter(e => e.subject_code === dept).length;
-    const stillDue = stillNeeded - alreadyPlaced;
-    // Take remaining from queue up to stillDue
-    for (let i = 0; i < stillDue && queues[dept].length > 0; i++) {
-      overflowQueue.push({ student: queues[dept].shift(), subject_code: dept });
-    }
-  }
-
-  if (overflowQueue.length > 0) {
-    // Fill empty seats row by row, left to right
-    for (let row = 1; row <= R && overflowQueue.length > 0; row++) {
-      for (let col = 1; col <= C && overflowQueue.length > 0; col++) {
-        if (!seatMap[`${row},${col}`]) {
-          const { student, subject_code } = overflowQueue.shift();
-          seatMap[`${row},${col}`] = { student, subject_code };
-        }
-      }
-    }
-  }
-
-  // ── Convert seatMap to allocations ──
+  // ── Convert to allocations ──
+  const allocations = [];
   for (let row = 1; row <= R; row++) {
     for (let col = 1; col <= C; col++) {
       const entry = seatMap[`${row},${col}`];
