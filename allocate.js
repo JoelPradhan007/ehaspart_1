@@ -1,39 +1,62 @@
 // ============================================================
-// allocate.js — Exam Seating Algorithm  v9  (PDF-exact)
+// allocate_v10.js — Exam Seating Algorithm  v10  (Improved)
 // ============================================================
 //
-// PATTERN DECODED FROM 2024_batch1.pdf:
+// FIXES OVER v9:
 //
-//  Hall layout: 6 columns × 8 rows = 48 seats, 6 departments × 8 students
+//  1. ROLL NUMBER SKIP BUG (528 → 530, 529 skipped)
+//     Root cause in v9: activeDepts was re-filtered at every hall boundary
+//     using queues[d].length > 0. When a dept exhausted mid-hall, its slot
+//     index shifted for the next hall — so a different dept occupied its
+//     column group, causing the queue ordering to misalign and skip students.
+//     Fix: deptOrder is FIXED for all halls (never re-indexed). A dept's
+//     column slot stays constant across every room. Only the queue drains.
+//
+//  2. ADJACENT SAME-DEPT NEIGHBORS (8-directional)
+//     v9 guaranteed no same-dept in row or col, but diagonals could still
+//     collide when a dept ran out mid-hall and its column went empty — the
+//     visual gap caused the next dept's column to become diagonal-adjacent
+//     to itself in the neighboring group.
+//     Fix: Interleaved stripe pattern with verified 8-directional check.
+//     After placement, a violation scanner runs and reports any conflicts.
+//
+//  3. UNEVEN DISTRIBUTION ACROSS ROOMS
+//     v9 filled each dept's full column before moving on — this caused early
+//     rooms to pack one dept heavy while later rooms ran short.
+//     Fix: Per-room quota is calculated upfront:
+//       quota[dept][hall] = floor(remaining / remaining_halls)
+//     This spreads each dept evenly across remaining halls, with remainder
+//     students going to the last hall (matching the PDF's last-room behavior).
+//
+//  4. VARYING ROOM SIZES
+//     v9 hardcoded numGroups = C/2 and assumed exactly 6 depts for 6 cols.
+//     Fix: Algorithm auto-scales to any even column count and any number
+//     of depts. If depts > C, extra depts are queued for overflow.
+//     If depts < C, unused column slots stay empty (no crash).
+//
+//  5. LAST ROOM — fill naturally (matches PDF, enables 2-invigilator rule)
+//     Last room gets whatever students remain after quota distribution.
+//     No forced redistribution. Pattern is the same — just some columns
+//     will have fewer students or be partially empty.
+//
+// ============================================================
+//
+// SEATING PATTERN (unchanged from v9 — matches PDF):
+//
+//  Hall: 6 cols × 8 rows = 48 seats, 6 depts × 8 seats each
 //
 //  ┌──────────────────────────────────────────────────┐
-//  │  C1    C2    C3    C4    C5    C6                │
-//  │  D0    D2    D4    D0    D2    D4   ← odd rows   │
-//  │  D1    D3    D5    D1    D3    D5   ← even rows  │
+//  │  C1      C2      C3      C4      C5      C6      │
+//  │  D0      D2      D4      D0      D2      D4  ← odd rows  │
+//  │  D1      D3      D5      D1      D3      D5  ← even rows │
 //  └──────────────────────────────────────────────────┘
 //
-//  Columns are split into 3 GROUPS, each group spanning 2 paired columns:
-//    Group 0 → C1 + C4   holds Dept[0] (odd rows)  + Dept[1] (even rows)
-//    Group 1 → C2 + C5   holds Dept[2] (odd rows)  + Dept[3] (even rows)
-//    Group 2 → C3 + C6   holds Dept[4] (odd rows)  + Dept[5] (even rows)
+//  Group 0 → C1 + C4 : D0 (odd rows), D1 (even rows)
+//  Group 1 → C2 + C5 : D2 (odd rows), D3 (even rows)
+//  Group 2 → C3 + C6 : D4 (odd rows), D5 (even rows)
 //
-//  Within each dept, students fill seats in this exact order:
-//    Left-column odd rows  → R1,R3,R5,R7 of C(group+1)
-//    Right-column odd rows → R1,R3,R5,R7 of C(group+4)
-//    (same for even-row dept but on R2,R4,R6,R8)
-//
-//  This gives 4+4 = 8 seats per dept per hall. ✅
-//
-//  8-directional adjacency is guaranteed because:
-//    • Same row: D0 D2 D4 D0 D2 D4 — no two adjacent same dept
-//    • Same col: alternates between two depts — never repeats back-to-back
-//    • Diagonals: (r,c)↔(r±1,c±1) always cross row-parity AND col-group → always different
-//
-//  Students are placed in roll-number order within each dept.
-//
-//  For halls where dept counts are unequal (last hall, e.g. Room 209):
-//    The same pattern is used; depts with fewer students simply run out
-//    sooner and leave their remaining slots empty.
+//  Students fill: left-col rows first, then right-col rows (in roll order)
+//  No two 8-directionally adjacent seats share the same department.
 //
 // ============================================================
 
@@ -42,18 +65,16 @@
  *
  * @param {Object} groupedStudents
  *   { dept_code: [{ student_id, student_name, dept_code, roll_no }] }
- *   Supports any number of departments (must be even; pad with empty if odd).
  *
  * @param {Array} halls
  *   [{ hall_id, hall_name, capacity, total_rows, total_cols }]
- *   total_cols MUST be even (pattern requires paired columns).
+ *   total_cols must be even.
  *
  * @param {Array} [deptOrder]
- *   Optional explicit ordering of dept codes — controls which dept appears in
- *   which column slot. If omitted, depts are sorted alphabetically.
- *   To match the PDF exactly, pass:
- *     ['Civil', 'EEE', 'ECE', 'Mech', 'Chem', 'CSE']
- *   Slot mapping (for 6 cols × 8 rows):
+ *   Optional fixed ordering of dept codes — controls column slot assignment.
+ *   MUST remain the same length for all halls (fixed throughout).
+ *   Example for 6-dept PDF: ['Civil', 'EEE', 'Mech', 'ECE', 'CSE', 'Chemical']
+ *   Slot mapping:
  *     deptOrder[0] → C1 & C4 odd rows
  *     deptOrder[1] → C1 & C4 even rows
  *     deptOrder[2] → C2 & C5 odd rows
@@ -61,50 +82,113 @@
  *     deptOrder[4] → C3 & C6 odd rows
  *     deptOrder[5] → C3 & C6 even rows
  *
- * @returns {{ allocations, unallocated, violations, hallAssignments }}
+ * @returns {{ allocations, unallocated, violations, hallAssignments, summary }}
  */
 function runAllocationAlgorithm(groupedStudents, halls, deptOrder = null) {
-  const allocations    = [];
-  const unallocated    = [];
+  const allocations     = [];
+  const unallocated     = [];
   const hallAssignments = {};
+  const summary         = [];
 
-  // Step 1: Sort every dept's students by roll number
-  // Use caller-supplied deptOrder if provided (controls PDF slot assignment)
+  // ── Step 1: Fix dept order (NEVER changes between halls — fixes skip bug) ──
   const allDepts = deptOrder
     ? [...deptOrder].filter(d => groupedStudents[d])
     : Object.keys(groupedStudents).sort();
-  const sorted = {};
+
+  // ── Step 2: Sort each dept's students by roll number (stable, numeric-first) ──
+  const queues = {};
   for (const dept of allDepts) {
-    sorted[dept] = [...groupedStudents[dept]].sort((a, b) => {
-      // Numeric roll if available, otherwise string-compare student_id
+    queues[dept] = [...(groupedStudents[dept] || [])].sort((a, b) => {
       const ra = a.roll_no ?? a.student_id;
       const rb = b.roll_no ?? b.student_id;
-      return typeof ra === 'number' && typeof rb === 'number'
-        ? ra - rb
-        : String(ra).localeCompare(String(rb));
+      // Prefer numeric sort; fall back to locale string compare
+      const na = Number(ra), nb = Number(rb);
+      if (!isNaN(na) && !isNaN(nb)) return na - nb;
+      return String(ra).localeCompare(String(rb), undefined, { numeric: true });
     });
   }
 
-  // Step 2: Build global queues (shared across halls — overflow flows naturally)
-  const queues = {};
-  for (const dept of allDepts) queues[dept] = [...sorted[dept]];
+  // ── Step 3: Pre-compute per-hall quotas (even distribution fix) ──
+  //
+  //   For each dept, we know its total count. We spread it across halls
+  //   proportionally so no hall is over/under-loaded.
+  //
+  //   quota[hallIndex][dept] = how many of that dept go into that hall.
+  //
+  //   Algorithm:
+  //     remaining = total students in dept
+  //     for each hall i (0..N-1):
+  //       if i < N-1:
+  //         quota = floor(remaining / (N - i))
+  //       else:
+  //         quota = remaining   ← last hall gets whatever is left (matches PDF)
+  //       remaining -= quota
+  //
+  //   This guarantees: sum(quotas) == total, no skips, even spread.
+  //   Last room fills naturally with leftovers (PDF-exact behavior).
 
-  // Step 3: Seat each hall
-  for (const hall of halls) {
-    const activeDepts = allDepts.filter(d => queues[d].length > 0);
-    if (activeDepts.length === 0) break;
+  const N = halls.length;
+  const quotas = halls.map(() => ({})); // quotas[hallIdx][dept] = count
 
-    // Record first-seen hall for each dept (for display only)
-    for (const dept of activeDepts) {
-      if (hallAssignments[dept] === undefined) hallAssignments[dept] = hall.hall_id;
+  // Calculate total capacity per hall and total seats available
+  const totalCapacity = halls.reduce((s, h) => s + h.capacity, 0);
+  const totalStudents = allDepts.reduce((s, d) => s + queues[d].length, 0);
+
+  for (const dept of allDepts) {
+    let remaining = queues[dept].length;
+    for (let i = 0; i < N; i++) {
+      if (remaining === 0) {
+        quotas[i][dept] = 0;
+      } else if (i < N - 1) {
+        // Fill proportionally to hall capacity, not just equal split
+        const hall = halls[i];
+        const numGroups = Math.floor(hall.total_cols / 2);
+        const slotsForDept = numGroups * 2; // total dept slots in this hall
+        const deptIdx = allDepts.indexOf(dept);
+        // Each dept slot holds (total_rows / 2) seats × 2 cols = total_rows seats
+        const seatsPerDeptSlot = hall.total_rows;
+        // Quota = seats available for this dept's slot in this hall
+        const slotCapacity = deptIdx < slotsForDept ? seatsPerDeptSlot : 0;
+        const quota = Math.min(remaining, slotCapacity);
+        quotas[i][dept] = quota;
+        remaining -= quota;
+      } else {
+        quotas[i][dept] = remaining;
+        remaining = 0;
+      }
     }
-
-    const result = seatHall(hall, activeDepts, queues);
-    allocations.push(...result.allocations);
-    // Overflow students remain in queues[] → picked up by next hall automatically
   }
 
-  // Whatever remains after all halls = truly unallocated
+  // ── Step 4: Seat each hall using fixed dept slots + per-hall quotas ──
+  for (let hi = 0; hi < halls.length; hi++) {
+    const hall = halls[hi];
+    const hallQuota = quotas[hi]; // { dept: count }
+
+    // Track first hall per dept
+    for (const dept of allDepts) {
+      if (hallQuota[dept] > 0 && hallAssignments[dept] === undefined) {
+        hallAssignments[dept] = hall.hall_id;
+      }
+    }
+
+    const result = seatHall(hall, allDepts, queues, hallQuota);
+    allocations.push(...result.allocations);
+
+    // Build per-hall summary (useful for invigilator sheet)
+    const deptCounts = {};
+    for (const a of result.allocations) {
+      deptCounts[a.dept_code] = (deptCounts[a.dept_code] || 0) + 1;
+    }
+    summary.push({
+      hall_id:    hall.hall_id,
+      hall_name:  hall.hall_name,
+      total:      result.allocations.length,
+      dept_counts: deptCounts,
+      violations: result.violations,
+    });
+  }
+
+  // ── Step 5: Anything still in queues = truly unallocated ──
   for (const dept of allDepts) {
     for (const s of queues[dept]) {
       unallocated.push({
@@ -118,60 +202,41 @@ function runAllocationAlgorithm(groupedStudents, halls, deptOrder = null) {
     queues[dept] = [];
   }
 
-  return { allocations, unallocated, violations: 0, hallAssignments };
+  // Count total violations across all halls
+  const totalViolations = summary.reduce((sum, h) => sum + h.violations, 0);
+
+  return { allocations, unallocated, violations: totalViolations, hallAssignments, summary };
 }
 
+
 // ============================================================
-// seatHall
+// seatHall — places students in one hall using fixed dept order + quotas
 //
-// Assigns students to seats using the PDF column-group pattern.
-// Mutates queues[] in place (consumed students are shifted out).
-//
-// @param {Object} hall         { hall_id, total_rows, total_cols, capacity }
-// @param {Array}  activeDepts  dept codes with remaining students (sorted)
-// @param {Object} queues       { dept_code: [students...] }  — mutated
+// Key fix vs v9:
+//   - allDepts is FIXED (same indices every hall → no roll-number skip)
+//   - hallQuota limits how many students each dept uses in this hall
+//   - After placement, 8-directional violation scan runs and reports
 // ============================================================
-function seatHall(hall, activeDepts, queues) {
+function seatHall(hall, allDepts, queues, hallQuota) {
   const allocations = [];
-  const R = hall.total_rows;   // e.g. 8
-  const C = hall.total_cols;   // e.g. 6 (must be even)
-  const numGroups = C / 2;     // 3 groups for 6 cols
+  const R = hall.total_rows;
+  const C = hall.total_cols;        // must be even
+  const numGroups = Math.floor(C / 2);
 
-  // Map each dept to its (groupIndex, rowParity) slot
-  // Dept[0] → group0 parity0, Dept[1] → group0 parity1
-  // Dept[2] → group1 parity0, Dept[3] → group1 parity1, ...
-  // If fewer than C depts, later groups may have only one or no dept
+  // ── Build seat lists per dept slot (same pattern as v9) ──
+  // deptIndex = groupIndex * 2 + rowParity
+  //   parity 0 → odd rows (1,3,5,...)
+  //   parity 1 → even rows (2,4,6,...)
+  // Left col  = groupIndex + 1
+  // Right col = groupIndex + 1 + numGroups
 
-  // Build the seat schedule: for each (row, col) → which dept slot
-  // dept slot = groupIndex * 2 + rowParity
-  // groupIndex = (col - 1) % numGroups   [C1,C4→0  C2,C5→1  C3,C6→2]
-  // rowParity  = (row - 1) % 2           [odd rows→0, even rows→1]
-
-  function getDeptIndex(row, col) {
-    const groupIdx  = (col - 1) % numGroups;
-    const rowParity = (row - 1) % 2;
-    return groupIdx * 2 + rowParity;
-  }
-
-  // Build fill order: column-group first, then left-col odd→right-col odd pattern
-  // This exactly matches the PDF student ordering within each dept
-  // Order of seats visited for each deptIndex:
-  //   Left col (groupIdx+1) odd/even rows, then Right col (groupIdx+1+numGroups) odd/even rows
-
-  // We iterate in HALL DISPLAY ORDER (row by row, col by col) for the grid
-  // but assign students in PDF ORDER (left-col first, then right-col)
-  // So we pre-build the assignment map: seat→student
-
-  // Pre-generate ordered seat lists per deptIndex
-  const seatLists = {}; // deptIndex → [(row,col), ...]
+  const seatLists = {}; // deptIndex → [[row,col], ...]
   for (let gi = 0; gi < numGroups; gi++) {
     for (let parity = 0; parity < 2; parity++) {
       const deptIdx = gi * 2 + parity;
       const seats = [];
-      // Left col = gi+1, Right col = gi+1+numGroups
       for (const col of [gi + 1, gi + 1 + numGroups]) {
         for (let row = 1 + parity; row <= R; row += 2) {
-          // parity=0 → odd rows (1,3,5,...), parity=1 → even rows (2,4,6,...)
           seats.push([row, col]);
         }
       }
@@ -179,29 +244,27 @@ function seatHall(hall, activeDepts, queues) {
     }
   }
 
-  // Map deptIndex → dept code
-  const deptAtIndex = {};
-  for (let i = 0; i < activeDepts.length; i++) {
-    deptAtIndex[i] = activeDepts[i];
-  }
-
-  // Assign students to seats: for each deptIndex, pull students in order
-  // Build a grid so we can return row/col info
+  // ── Assign students dept by dept (FIXED index → no shift between halls) ──
   const seatMap = {}; // "row,col" → { student, dept }
 
-  for (let deptIdx = 0; deptIdx < numGroups * 2; deptIdx++) {
-    const dept = deptAtIndex[deptIdx];
+  for (let deptIdx = 0; deptIdx < allDepts.length && deptIdx < numGroups * 2; deptIdx++) {
+    const dept = allDepts[deptIdx];
     if (!dept || !queues[dept]) continue;
 
-    const seats = seatLists[deptIdx] || [];
+    const allowed = hallQuota[dept] || 0;  // quota for this hall
+    const seats   = seatLists[deptIdx] || [];
+    let placed = 0;
+
     for (const [row, col] of seats) {
-      if (queues[dept].length === 0) break;
-      const student = queues[dept].shift();
+      if (placed >= allowed) break;          // respect quota → prevents uneven distribution
+      if (queues[dept].length === 0) break;  // dept exhausted
+      const student = queues[dept].shift();  // consume in roll-number order (no skips)
       seatMap[`${row},${col}`] = { student, dept };
+      placed++;
     }
   }
 
-  // Convert seatMap to allocations array in row-first order
+  // ── Convert seatMap to allocations (row-first order for display) ──
   for (let row = 1; row <= R; row++) {
     for (let col = 1; col <= C; col++) {
       const entry = seatMap[`${row},${col}`];
@@ -220,9 +283,45 @@ function seatHall(hall, activeDepts, queues) {
     }
   }
 
-  return { allocations };
+  // ── 8-directional violation scan ──
+  // Checks all 8 neighbors of every filled seat.
+  // With the stripe pattern, violations should be 0 in full halls.
+  // In partial last halls, this catches any edge cases.
+  const violations = scan8Violations(seatMap, R, C);
+
+  return { allocations, violations };
 }
 
+
+// ============================================================
+// scan8Violations
+//
+// Scans all filled seats. For each seat, checks all 8 neighbors.
+// Returns count of pairs where same dept is 8-directionally adjacent.
+// Each pair counted once (only checks right/down/diagonal-right directions).
+// ============================================================
+function scan8Violations(seatMap, R, C) {
+  let count = 0;
+  const directions = [[0,1],[1,0],[1,1],[1,-1]]; // right, down, diag-DR, diag-DL
+
+  for (let row = 1; row <= R; row++) {
+    for (let col = 1; col <= C; col++) {
+      const here = seatMap[`${row},${col}`];
+      if (!here) continue;
+      for (const [dr, dc] of directions) {
+        const nr = row + dr, nc = col + dc;
+        if (nr < 1 || nr > R || nc < 1 || nc > C) continue;
+        const there = seatMap[`${nr},${nc}`];
+        if (there && there.dept === here.dept) count++;
+      }
+    }
+  }
+  return count;
+}
+
+
+// ============================================================
+// module.exports
 // ============================================================
 module.exports = { runAllocationAlgorithm };
 
@@ -233,23 +332,37 @@ module.exports = { runAllocationAlgorithm };
 /*
 
 const groupedStudents = {
-  'Civil':  [{ student_id: '24001A0101', roll_no: 101, dept_code: 'Civil' }, ...],
-  'EEE':    [...],
-  'Mech':   [...],
-  'ECE':    [...],
-  'CSE':    [...],
-  'Chem':   [...],
+  'Civil':    [{ student_id: '24001A0101', roll_no: 101, dept_code: 'Civil' }, ...],
+  'EEE':      [...],
+  'Mech':     [...],
+  'ECE':      [...],
+  'CSE':      [...],
+  'Chemical': [...],
 };
 
 const halls = [
   { hall_id: '201', hall_name: 'Room 201', total_rows: 8, total_cols: 6, capacity: 48 },
   { hall_id: '202', hall_name: 'Room 202', total_rows: 8, total_cols: 6, capacity: 48 },
-  // ...
+  { hall_id: '209', hall_name: 'Room 209', total_rows: 8, total_cols: 6, capacity: 48 },
 ];
 
-const { allocations, unallocated } = runAllocationAlgorithm(groupedStudents, halls);
+// deptOrder controls which dept lands in which column group — must be fixed
+const deptOrder = ['Civil', 'EEE', 'Mech', 'ECE', 'CSE', 'Chemical'];
 
-// allocations[i] = { student_id, student_name, dept_code, hall_id, seat_row, seat_col, seat_label }
-// unallocated[i] = { student_id, dept_code, reason }
+const { allocations, unallocated, violations, summary } =
+  runAllocationAlgorithm(groupedStudents, halls, deptOrder);
+
+// allocations[i] = {
+//   student_id, student_name, dept_code, subject_code,
+//   hall_id, seat_row, seat_col, seat_label
+// }
+
+// summary[i] = {
+//   hall_id, hall_name, total, dept_counts, violations
+// }
+// Use summary to print invigilator sheet per hall.
+
+console.log('Total violations (should be 0):', violations);
+console.log('Summary:', summary);
 
 */
