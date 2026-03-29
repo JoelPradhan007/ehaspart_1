@@ -622,6 +622,7 @@
       const json = await res.json();
 
       if (json.success) {
+        sessionStorage.clear(); // Clear any previous user's session data
         sessionStorage.setItem('ehas_role',       json.role);
         sessionStorage.setItem('ehas_user',       json.username);
         sessionStorage.setItem('ehas_token',      json.token);
