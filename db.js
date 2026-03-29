@@ -61,7 +61,6 @@ pool.getConnection()
   .catch(err => {
     console.error("❌ MySQL connection failed:", err.message);
     console.error("⚠️  Check DB_HOST, DB_USER, DB_PASSWORD, DB_NAME, DB_PORT env vars.");
-    // Do NOT call process.exit(1) — let the server stay up so Render doesn't crash-loop.
   });
 
 // ============================================
@@ -213,14 +212,27 @@ const bulkInsertAllocations = async (allocations) => {
 };
 
 const getAllAllocations = async () => {
-  const [r] = await pool.execute(`SELECT * FROM v_seating_chart`);
+  const [r] = await pool.execute(`
+    SELECT sa.student_id, sa.hall_id, sa.seat_row, sa.seat_col, sa.seat_label,
+           s.student_name, s.subject_code, h.hall_name
+    FROM seat_allocations sa
+    JOIN students s ON sa.student_id = s.student_id
+    JOIN halls h ON sa.hall_id = h.hall_id
+    ORDER BY sa.hall_id, sa.seat_row, sa.seat_col
+  `);
   return r;
 };
 
 const getAllocationsByHall = async (hall_id) => {
-  const [r] = await pool.execute(
-    `SELECT * FROM v_seating_chart WHERE hall_id=? ORDER BY seat_row, seat_col`, [hall_id]
-  );
+  const [r] = await pool.execute(`
+    SELECT sa.student_id, sa.hall_id, sa.seat_row, sa.seat_col, sa.seat_label,
+           s.student_name, s.subject_code, h.hall_name
+    FROM seat_allocations sa
+    JOIN students s ON sa.student_id = s.student_id
+    JOIN halls h ON sa.hall_id = h.hall_id
+    WHERE sa.hall_id = ?
+    ORDER BY sa.seat_row, sa.seat_col
+  `, [hall_id]);
   return r;
 };
 
@@ -298,12 +310,27 @@ const getUnallocatedStudents = async () => {
 // REPORTS
 // ============================================
 const getSubjectPerHall = async () => {
-  const [r] = await pool.execute(`SELECT * FROM v_subject_per_hall`);
+  const [r] = await pool.execute(`
+    SELECT sa.hall_id, h.hall_name, s.subject_code, COUNT(*) AS student_count
+    FROM seat_allocations sa
+    JOIN students s ON sa.student_id = s.student_id
+    JOIN halls h ON sa.hall_id = h.hall_id
+    GROUP BY sa.hall_id, h.hall_name, s.subject_code
+    ORDER BY sa.hall_id, s.subject_code
+  `);
   return r;
 };
 
 const getHallSummary = async () => {
-  const [r] = await pool.execute(`SELECT * FROM v_hall_summary`);
+  const [r] = await pool.execute(`
+    SELECT h.hall_id, h.hall_name, h.capacity, h.total_rows, h.total_cols,
+           COUNT(sa.student_id) AS seats_filled,
+           h.capacity - COUNT(sa.student_id) AS seats_remaining
+    FROM halls h
+    LEFT JOIN seat_allocations sa ON h.hall_id = sa.hall_id
+    GROUP BY h.hall_id, h.hall_name, h.capacity, h.total_rows, h.total_cols
+    ORDER BY h.hall_id
+  `);
   return r;
 };
 
